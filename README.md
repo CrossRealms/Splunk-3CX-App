@@ -1,5 +1,9 @@
 # Splunk App for 3CX Phone System
 
+### Download from Splunkbase
+https://splunkbase.splunk.com/app/5155/
+
+
 OVERVIEW
 --------
 The Splunk app for 3CX Phone Systems is used to present the 3CX Phone Systems information into Splunk. There are 5 dashboards named Overview and Queue Summary, Agent Logins, Queue Extensions and Call Logs. There are tabs for Reports and Alerts. User can schedule pre-defined report creation and can get it over email. Alerts are generated when there is no data ingested for particular sourcetype.
@@ -126,6 +130,7 @@ CONTRIBUTORS
 * Usama Houlila
 * Preston Carter
 * Ahad Ghani
+* Vatsal Jagani
 
 
 SUPPORT
