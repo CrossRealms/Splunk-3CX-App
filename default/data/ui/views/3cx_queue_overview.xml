@@ -1,0 +1,302 @@
+<form>
+  <label>Queue Summary</label>
+  <description>View general queue statistics over a duration of time. The default time period is set to: Week to date</description>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="hosts2" searchWhenChanged="true">
+      <label>Office Name</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <initialValue>*</initialValue>
+      <valuePrefix>host=</valuePrefix>
+      <delimiter> OR </delimiter>
+      <fieldForLabel>officeNames</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>`default_index`
+| lookup host_lookup.csv host OUTPUT hostname
+| eval officeNames = if(isnull(hostname),host,hostname)
+| dedup officeNames
+| table host, officeNames
+| sort + host</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+    </input>
+    <input type="multiselect" token="queues1" searchWhenChanged="true">
+      <label>Queue(s)</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>q_name="</valuePrefix>
+      <delimiter> OR </delimiter>
+      <fieldForLabel>fqname</fieldForLabel>
+      <fieldForValue>q_name</fieldForValue>
+      <search>
+        <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ | eval fqname = q_name+" ("+q_num+")" | dedup q_name | table q_name,fqname | sort + q_name</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="text" token="slatime" searchWhenChanged="true">
+      <label>SLA (in seconds)</label>
+      <default>30</default>
+      <initialValue>30</initialValue>
+    </input>
+    <input type="time" token="time_overview">
+      <label>Time</label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Queue Calls</title>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
+| dedup idcallcent_queuecalls
+| stats count(idcallcent_queuecalls)</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="height">70</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Total Queue Calls</option>
+      </single>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
+| dedup idcallcent_queuecalls
+| where !isnull(q_num) AND reason_noanswerdesc="" AND reason_failcode=0
+| stats count</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="height">70</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Queue Calls Answered</option>
+      </single>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
+| dedup idcallcent_queuecalls
+| where !isnull(q_num) AND reason_noanswerdesc!="" 
+| stats count</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="height">70</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Queue Calls Unanswered</option>
+      </single>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
+| dedup idcallcent_queuecalls
+| where !isnull(q_num) AND reason_noanswerdesc="" AND reason_failcode != 0
+| stats count</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="height">70</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Failed Queue Calls</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Number of Calls Received</title>
+      <chart>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
+| dedup idcallcent_queuecalls
+| timechart span=1d count(idcallcent_queuecalls) BY q_name
+| rename q_name as Queue, count(idcallcent_queuecalls) as "Total Calls"</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="charting.axisTitleY.text">Calls Received</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.legend.placement">top</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Daily Call Expectancy - Heat Map</title>
+      <chart>
+        <title>Hourly Heat Map</title>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$
+| dedup idcallcent_queuecalls 
+| timechart span=1h count
+| eval Hour=strftime(_time,"%H") 
+| stats sum(count) as Calls by Hour</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="charting.axisTitleY.text">Hour</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Daily % Calls Answered by Queue</title>
+      <input type="time" token="tframe1" searchWhenChanged="true">
+        <label>Time Frame</label>
+        <default>
+          <earliest>-1d@d</earliest>
+          <latest>@d</latest>
+        </default>
+      </input>
+      <table>
+        <title>Calls</title>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$
+| eval Queue = q_num+" - "+q_name
+| eval Ab = if(isserviced="0", 1, 0)
+| eval Ans = if(isserviced="1", 1, 0)
+| eval SlaP = if(tot_ringing_sec&lt;=$slatime$,1,0)
+| stats count as Total, 
+sum(Ab) as Abandoned, 
+sum(Ans) as Answered,
+sum(tot_servicing_sec) as TotTalk,
+avg(tot_servicing_sec) as AvgTalk,
+sum(tot_ringing_sec) as TotRing,
+avg(tot_ringing_sec) as AvgRing,
+sum(SlaP) as SlaPc by Queue
+| eval TotC = [search sourcetype="3cx:queuecalls_view" | stats count as TotalC | return $TotalC ]
+| eval PctOfCalls = round((Total/TotC)*100,2) . " %"
+| eval PctOfSLA = round((SlaPc/Total)*100,2) . " %"
+| eval SvPct = round(Answered*100/Total,1) . " %"
+| eval TTalk = replace(tostring(TotTalk,"duration"),"\.(\d+)","")
+| eval TRing = replace(tostring(TotRing,"duration"),"\.(\d+)","")
+| eval TTalk = replace(TTalk,"(\d*)\+(\d+)\:(\d+)\:(\d+)","\1d \2h \3m \4s")
+| eval TRing = replace(TRing,"(\d*)\+(\d+)\:(\d+)\:(\d+)","\1d \2h \3m \4s")
+| eval TTalk = replace(TTalk,"(\d+)\:(\d+)\:(\d+)","\1h \2m \3s")
+| eval TRing = replace(TRing,"(\d+)\:(\d+)\:(\d+)","\1h \2m \3s")
+| eval ATalk = strftime(AvgTalk, "%Mm %Ss")
+| eval ARing = strftime(AvgRing, "%Mm %Ss")
+| table Queue, Total, Abandoned, Answered, PctOfCalls, SvPct, PctOfSLA, TRing, ARing, TTalk, ATalk
+| rename Total as "Total Calls", SvPct as "% of Calls Serviced", PctOfSLA as "SLA Met %", TRing AS "Ring Time Total", ARing as "Mean Ring Time", TTalk AS "Talk Time Total", ATalk as "Mean Talk Time", PctOfCalls as "% of Calls Total"
+| sort + q_num</query>
+          <earliest>$tframe1.earliest$</earliest>
+          <latest>$tframe1.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="totalsRow">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Average Durations</title>
+      <input type="dropdown" token="savgs" searchWhenChanged="true">
+        <label></label>
+        <choice value="tot_ringing_sec">Average Customer Ring Time</choice>
+        <choice value="tot_servicing_sec">Average Customer Talk Time</choice>
+        <choice value="tot_polling_sec">Average Customer Poll Time</choice>
+        <default>tot_ringing_sec</default>
+        <initialValue>tot_ringing_sec</initialValue>
+      </input>
+      <chart>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
+| dedup idcallcent_queuecalls
+| timechart span=1d avg($savgs$) BY q_name
+| rename q_name as Queue, count(idcallcent_queuecalls) as "Total Calls"</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsY.majorUnit">60</option>
+        <option name="charting.axisTitleY.text">Seconds</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>SLA Rate</title>
+      <chart>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
+| dedup idcallcent_queuecalls
+| eval SLTime = if(tot_ringing_sec&lt;=$slatime$,"SLA Met","SLA Breached")
+| chart count AS QCalls by q_name, SLTime span=1d
+| rename q_name as Queue</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.stackMode">stacked100</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="height">312</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Failed Call Description(s)</title>
+      <chart>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
+| dedup idcallcent_queuecalls
+| where reason_failcode != 0
+| rename q_name AS "Queue #"
+| chart count(time_start) AS "Abandoned # of Calls" by "Queue #" reason_faildesc</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="charting.axisTitleY.text"># of Calls</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">top</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Unanswered Call Description(s)</title>
+      <chart>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$
+| dedup idcallcent_queuecalls
+| where reason_noanswercode != 0
+| rename q_name AS "Queue #"
+| eval reason_noanswerdesc=case((reason_noanswerdesc="MaxWaitTime"), "Max Wait Time",
+                    (reason_noanswerdesc="NoAgents"), "No Agents Signed In",
+                    (reason_noanswerdesc="UserRequested"), "User Requested Callback",
+                        true(), "IMPOSSIBLE!")
+| chart count(time_start) AS "Abandoned # of Calls" by "Queue #" reason_noanswerdesc</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="charting.axisTitleY.text"># of Calls</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.legend.placement">top</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+</form>

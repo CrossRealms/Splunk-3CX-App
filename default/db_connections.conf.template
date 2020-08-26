@@ -1,0 +1,12 @@
+﻿# Template for db_connections.conf file for DB Connect App, to collect data for 3CX App
+
+[3CX]
+identity = 3CX	
+connection_type = postgres
+database = database_single
+disabled = 0
+jdbcUseSSL = false
+localTimezoneConversionEnabled = false
+readonly = false
+host = <hostname or Ip of the database eg.127.0.0.1>
+port = <port for the database eg.5480>

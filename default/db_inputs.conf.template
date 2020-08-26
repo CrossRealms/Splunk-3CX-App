@@ -1,0 +1,86 @@
+﻿# Template for db_inputs.conf file for DB Connect App, to collect data for 3CX App
+[default]
+host = <provide host-name for 3CX>
+
+[calls_view]
+connection = 3CX
+disabled = 0
+index = 3cx
+index_time_mode = dbColumn
+input_timestamp_column_number = 2
+interval = 0,30 * * * *
+mode = batch
+query = SELECT calls.id, calls.start_time, calls.end_time, calls.is_answered, calls.ringing_dur, calls.talking_dur, calls.q_wait_dur, CASE WHEN partinfo.caller_number LIKE 'Ext%%' THEN 'Outbound' ELSE 'Inbound' END AS InOut \
+FROM cl_calls as calls INNER JOIN \
+(SELECT calls.id, Min(segs.id) AS segID FROM cl_calls as calls INNER JOIN cl_segments as segs ON calls.id = segs.call_id GROUP BY calls.id) \
+AS Callss ON calls.id = Callss.id INNER JOIN \
+cl_segments as segs ON segs.id = callss.segID JOIN cl_party_info as partinfo ON partinfo.id = segs.call_id WHERE calls.start_time > now() - interval '30 minutes'\
+sourcetype = 3cx:calls_view
+
+
+[call_report]
+connection = 3CX
+disabled = 0
+index = 3cx
+index_time_mode = dbColumn
+input_timestamp_column_number = 4
+interval = 0,30 * * * *
+mode = batch
+query = SELECT calls.id as call_id, calls.start_time as call_start_time, calls.end_time as call_end_time, segments.start_time as start_time, segments.end_time as end_time, segments.seq_group, segments.seq_order, segments.type as seg_type, src_info.dn_type as src_type, src_info.dn as src_dn, src_info.caller_number as src_caller_number, src_info.display_name as src_display_name, dst_info.dn_type as dst_type, dst_info.dn as dst_dn, dst_info.caller_number as dst_caller_number, dst_info.display_name as dst_display_name, segments.action_id as action, act_info.dn_type as act_dn_type, act_info.dn as act_dn, act_info.caller_number as act_caller_number, act_info.display_name as act_display_name, CASE WHEN src_info.dn_type = 4 OR dst_info.dn_type = 4 OR act_info.dn_type = 4 THEN 1 ELSE 0 END as has_queue, dst_participants.recording_url as recording_url FROM cl_calls as calls JOIN cl_segments as segments ON calls.id = segments.call_id JOIN cl_participants as src_participants ON segments.src_part_id =  src_participants.id JOIN cl_participants as dst_participants ON segments.dst_part_id =  dst_participants.id JOIN cl_party_info as src_info ON src_participants.info_id = src_info.id JOIN cl_party_info as dst_info ON dst_participants.info_id = dst_info.id LEFT OUTER JOIN (cl_participants as act_participants join cl_party_info as act_info on act_info.id = act_participants.info_id) on act_participants.id = segments.action_party_id WHERE calls.start_time > now() - interval '30 minutes'
+sourcetype = 3cx:call_report
+tail_rising_column_init_ckpt_value = {"value":null,"columnType":null}
+
+[cl_party_info]
+connection = 3CX
+disabled = 0
+index = 3cx
+index_time_mode = current
+interval = 0,30 * * * *
+mode = batch
+query = select cl_party_info.* from cl_party_info JOIN cl_participants as parts ON parts.info_id = cl_party_info.id JOIN cl_segments ON parts.id = cl_segments.src_part_id WHERE cl_segments.start_time - INTERVAL '5 hours' > now() - interval '1 day' UNION select cl_party_info.* from cl_party_info JOIN cl_participants as parts ON parts.info_id = cl_party_info.id JOIN cl_segments ON parts.id = cl_segments.dst_part_id WHERE cl_segments.start_time > now() - interval '30 minutes'
+sourcetype = 3cx:cl_party_info
+tail_rising_column_init_ckpt_value = {"value":null,"columnType":null}
+
+[agent_login_export]
+connection = 3CX
+disabled = 0
+index = 3cx
+index_time_mode = dbColumn
+input_timestamp_column_number = 5
+interval = 0,30 * * * *
+mode = batch
+query = WITH\
+    rows\
+    AS\
+    (\
+        SELECT idcallcent_ag_queuestatus, q_num, ag_num, users.firstname, users.lastname AS ag_lname, timeofupdate, is_loggedin_in_queue, is_loggedin_in_allqueues, ROW_NUMBER() OVER  (ORDER BY q_num, ag_num, timeofupdate) AS rn, LAG(timeofupdate) OVER  (ORDER BY q_num, ag_num, timeofupdate) pDataDate\
+        FROM callcent_ag_queuestatus INNER JOIN dn on (cast (dn.value as int8) = cast(callcent_ag_queuestatus.ag_num as int8)) INNER JOIN extension ON (dn.iddn = cast (extension.fkiddn as int8)) INNER JOIN users ON (extension.fkiddn = users.fkidextension)\
+    ),\
+    rowsIn\
+    AS\
+    (\
+        SELECT idcallcent_ag_queuestatus, q_num, ag_num, timeofupdate, is_loggedin_in_queue, is_loggedin_in_allqueues, rn, pDataDate\
+        FROM rows INNER JOIN dn on (cast (dn.value as int8) = cast(rows.ag_num as int8)) INNER JOIN extension ON (dn.iddn = cast (extension.fkiddn as int8)) INNER JOIN users ON (extension.fkiddn = users.fkidextension)\
+        WHERE is_loggedin_in_queue='t'\
+    ),\
+    rowsOut\
+    AS\
+    (\
+        SELECT idcallcent_ag_queuestatus, q_num, users.firstname, users.lastname, ag_num, timeofupdate, is_loggedin_in_queue, is_loggedin_in_allqueues, rn, pDataDate, CASE WHEN (LAG(rn) OVER (ORDER BY rn) + 1) IS NULL THEN 1 ELSE (LAG(rn) OVER (ORDER BY rn) + 1)   END as in_row\
+        FROM rows INNER JOIN dn on (cast (dn.value as int8) = cast(rows.ag_num as int8)) INNER JOIN extension ON (dn.iddn = cast (extension.fkiddn as int8)) INNER JOIN users ON (extension.fkiddn = users.fkidextension)\
+        WHERE is_loggedin_in_queue='f'\
+    )\
+SELECT o.q_num, o.ag_num, o.firstname AS ag_fname, o.lastname AS ag_lname, i.timeofupdate AT TIME ZONE 'UTC' as LoginTime, o.timeofupdate AT TIME ZONE 'UTC' as LogoutTime, ((DATE_PART('day', o.timeofupdate::timestamp - i.timeofupdate::timestamp) * 24 +  DATE_PART('hour', o.timeofupdate::timestamp - i.timeofupdate::timestamp)) * 60 +    DATE_PART('minute', o.timeofupdate::timestamp - i.timeofupdate::timestamp)) * 60 +    DATE_PART('second', o.timeofupdate::timestamp - i.timeofupdate::timestamp) as    SecondsLoggedIn\
+FROM rowsOut o JOIN rowsIn i ON i.rn = o.in_row AND i.ag_num = o.ag_num AND o.q_num = i.q_num WHERE i.timeofupdate AT TIME ZONE 'UTC' > now() - interval '30 minutes'
+sourcetype = 3cx:agent_logins
+
+[queuecalls_view]
+connection = 3CX
+disabled = 0
+index = 3cx
+index_time_mode = dbColumn
+input_timestamp_column_number = 5
+interval = 0,30 * * * *
+mode = batch
+query = SELECT idcallcent_queuecalls,q.name AS q_name, q_num, dn.value, time_start AT TIME ZONE 'UTC' AS time_start, time_end AT TIME ZONE 'UTC' AS time_end, ts_waiting, ts_polling, ts_servicing, ts_locating, count_polls, count_dialed, count_rejected, count_dials_timed, reason_noanswercode, reason_noanswerdesc, reason_failcode, reason_faildesc, call_history_id, q_cal, from_userpart, from_displayname, to_dialednum, to_dn, urs.firstname AS ag_fname, urs.lastname AS ag_lname, to_dntype, cb_num, call_result, deal_status, is_visible, date_part('second', ts_waiting) + date_part('minute',ts_waiting)*60 + date_part('hour', ts_waiting)*3600 AS tot_waiting_sec,date_part('second', ts_polling) + date_part('minute',ts_polling)*60 + date_part('hour', ts_polling)*3600 AS tot_polling_sec,date_part('second', ts_servicing) + date_part('minute',ts_servicing)*60 + date_part('hour', ts_servicing)*3600 AS tot_servicing_sec,date_part('second', ts_locating) + date_part('minute',ts_locating)*60 + date_part('hour', ts_locating)*3600 AS tot_locating_sec,date_part('second', ts_waiting) + date_part('minute',ts_waiting)*60 + date_part('hour', ts_waiting)*3600 + date_part('second', ts_polling) + date_part('minute',ts_polling)*60 + date_part('hour', ts_polling)*3600 AS tot_ringing_sec,date_part('second', ts_polling) + date_part('minute',ts_polling)*60 + date_part('hour', ts_polling)*3600 - 20*(count_dialed - count_polls) AS tot_agent_polling_sec,CASE WHEN ts_servicing = '00:00:00.0000000' THEN 'Unserviced' ELSE 'Serviced' END AS serviced,CASE WHEN ts_servicing = '00:00:00.0000000' THEN 0 ELSE 1 END AS isserviced,                                                                                                    ((DATE_PART('day', time_end::timestamp - time_start::timestamp) * 24 + DATE_PART('hour', time_end::timestamp - time_start::timestamp)) * 60 + DATE_PART('minute', time_end::timestamp - time_start::timestamp)) * 60 + DATE_PART('second', time_end::timestamp - time_start::timestamp) AS duration                                                  FROM callcent_queuecalls INNER JOIN dn ON (q_num = dn.value) INNER JOIN ( SELECT queue.name, 'queue', queue.fkiddn FROM queue UNION ALL SELECT ringgroup.name, 'RG', ringgroup.fkiddn FROM ringgroup UNION ALL SELECT ivr.name, 'ivr', ivr.fkiddn FROM ivr ) q ON q.fkiddn = dn.iddn LEFT OUTER JOIN (SELECT dn.iddn, dn.value FROM dn ) directoryNum ON callcent_queuecalls.to_dn = directoryNum.value LEFT OUTER JOIN (Select extension.fkiddn, extension.authid FROM extension )ext ON directoryNum.iddn = ext.fkiddn LEFT OUTER JOIN (Select users.fkidextension, users.firstname, users.lastname FROM users ) urs ON urs.fkidextension = ext.fkiddn WHERE time_start AT TIME ZONE 'UTC' > now() - interval '30 minutes'
+sourcetype = 3cx:queuecalls_view

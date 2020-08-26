@@ -1,0 +1,135 @@
+<form script="recordingbtn.js">
+  <label>Call Log</label>
+  <description>Note: Not all calls have recordings.</description>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="hosts4" searchWhenChanged="true">
+      <label>Office Name</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>host=</valuePrefix>
+      <delimiter> OR </delimiter>
+      <fieldForLabel>officeNames</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>`default_index`
+| lookup host_lookup.csv host OUTPUT hostname
+| eval officeNames = if(isnull(hostname),host,hostname)
+| dedup officeNames
+| table host, officeNames
+| sort + host</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+    </input>
+    <input type="multiselect" token="iext" searchWhenChanged="true">
+      <label>Internal Extensions</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>ext</fieldForLabel>
+      <fieldForValue>extn</fieldForValue>
+      <search>
+        <query>`default_index` sourcetype="3cx:call_report"
+| where dst_type=0 OR src_type=0
+| eval ext = if(dst_type=0, dst_display_name+" ("+dst_caller_number+")", src_display_name+" ("+src_caller_number+")")
+| eval extn = if(dst_type=0, dst_caller_number, src_caller_number)
+| dedup extn | sort + ext
+| table ext, extn</query>
+        <earliest>-1y</earliest>
+        <latest>now</latest>
+      </search>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="multiselect" token="exnums" searchWhenChanged="true">
+      <label>External Numbers</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>externum</fieldForLabel>
+      <fieldForValue>externum</fieldForValue>
+      <search>
+        <query>`default_index` sourcetype="3cx:call_report" (dst_type=1 OR dst_type=13) (src_type=1)
+| eval externum = if(src_type=1,src_caller_number,dst_caller_number)
+| dedup externum
+| table externum</query>
+        <earliest>-1y</earliest>
+        <latest>now</latest>
+      </search>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="text" token="pcallid" searchWhenChanged="true">
+      <label>Call ID</label>
+      <default>*</default>
+      <prefix>call_id=</prefix>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="time" token="tspan1" searchWhenChanged="true">
+      <label>Time Span</label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="checkbox" token="qcallopt" searchWhenChanged="true">
+      <label></label>
+      <choice value="1">Queue Calls</choice>
+      <choice value="0">Non-Queue Calls</choice>
+      <default>1,0</default>
+      <initialValue>1,0</initialValue>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>has_queue=</valuePrefix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="checkbox" token="calldire" searchWhenChanged="true">
+      <label></label>
+      <choice value="src_type=1 OR src_type=0">Inbound Calls</choice>
+      <choice value="dst_type=13 OR dst_type=1">Outbound Calls</choice>
+      <choice value="src_type!=1 AND src_type!=0 AND dst_type!=13 AND dst_type!=1">Other</choice>
+      <default>src_type=1 OR src_type=0,dst_type=13 OR dst_type=1,src_type!=1 AND src_type!=0 AND dst_type!=13 AND dst_type!=1</default>
+      <initialValue>src_type=1 OR src_type=0,dst_type=13 OR dst_type=1,src_type!=1 AND src_type!=0 AND dst_type!=13 AND dst_type!=1</initialValue>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <delimiter> OR </delimiter>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Calls Timetable</title>
+      <table id="callrep">
+        <search>
+          <query>`default_index` sourcetype="3cx:call_report" 
+$hosts4$ $iext$ $exnums$ $pcallid$ $qcallopt$ $calldire$
+| eval call_start_time = strftime(strptime(call_start_time,"%Y-%m-%d %H:%M:%S"),"%m/%d/%Y %I:%M:%S %p%z")
+| eval recording_url = if(isnull(recording_url), "NOREC", recording_url) 
+| eval rec_url = replace(replace(replace(replace(replace(replace(replace(recording_url, "\)", "%2529"), "\(", "%2528"), " ", "%2520"), "\]", "%255D"), "\[", "%255B"), "%3A", "%25253A"), "\/", "%252F")
+| eval hst = lower(host)
+| eval rec_link = if(rec_url="NOREC",rec_url,"https://"+hst+":5001/#/download_record/"+rec_url)
+| stats count by call_id, call_start_time ,seq_order, start_time, end_time, src_caller_number, src_display_name, dst_caller_number, dst_display_name, action, rec_link
+| fields - count | sort -call_id, + seq_order
+| rename call_id as "Call ID", call_start_time as "Call Time", rec_link as Recording
+| stats list(seq_order) as Sequence, list(start_time) as "Start Time", list(end_time) as "End Time", list(src_caller_number) as "Source Number", list(src_display_name) as "Source Name", list(dst_caller_number) as "Dest. Number", list(dst_display_name) as "Dest. Name", list(action) as "Action" by "Call ID", "Call Time", Recording
+| sort - "Call ID", + seq_order</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="count">25</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">$click.value2|n$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</form>

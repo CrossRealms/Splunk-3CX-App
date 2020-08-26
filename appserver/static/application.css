@@ -1,0 +1,245 @@
+/* Basic Typography
+---------------------------------*/
+body, td {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size:11px;
+    color: #111;
+}
+
+input, textarea, select {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size:12px;
+    color: #333;
+}
+
+/* monospaced font */
+.splFont-mono {
+    font-family: Consolas,Monaco,Courier New,monospace;
+}
+
+
+.appLogo {
+    height: 43px; 
+    width: 81px;
+    background-image: url(appLogo_white.png);
+    _background-image: url(appLogo_white.gif); /* for IE6 */
+    background-repeat: no-repeat;
+}
+
+/* the name of your app. line height can be adjusted to fix alignment issues w/ the logo. color is the color of the text. if your logo has the name in it, then you can set this to "display:none;  */
+
+.appHeaderWrapper h1 {
+    line-height: 43px;
+}
+
+
+/* background-color and/or image of your app */
+.appHeaderWrapper {
+    background-color: #000;
+    background-image: url(overlay_togradient_large.png);
+    background-repeat: repeat-x;
+    background-position: top;
+}
+
+.splHeader-navigation {
+    background-repeat: repeat-x;
+    _background-image: none;
+}
+
+
+/*--- the hover state ---*/
+ul.appBarNav li.hasMenu a:hover, ul.appBarNav li a:hover {
+    background-image: url(overlay_white_28.png);
+    background-repeat: repeat-x;
+    _background-image: none;   /* for IE6 */
+}
+
+/*--- the open state ---*/
+ul.appBarNav li a.menuOpen {
+    background-image: url(overlay_white_28.png);
+    background-repeat: repeat-x;
+    _background-image: none;   /* for IE6 */
+}
+
+
+/* Specific overrides */
+.layoutCellInner .ResultsHeader .splHeader, .layoutCellInner .ResultsHeader .splHeader-secondary {
+    background: transparent none;
+}
+
+
+/* dashboard containers */
+.dashboardCell {
+    background-image:url(overlay_topgradient.png);
+    background-repeat:repeat-x;
+    _background-image: none;   /* for IE6 */
+}
+
+/* headers 
+---------------------------------*/
+
+/* primary header background color + overlay */
+.splHeader-primary,
+.TitleBar .splHeader, 
+.FieldPickerPopup .splHeader-primary {
+background-image:url(overlay_topgradient.png);
+background-repeat:repeat-x;
+_background-image: none;
+}
+
+/* secondary (i.e. sidebar) header background color + overlay */
+.splHeader-secondary {
+background-image:url(overlay_topgradient.png);
+background-repeat:repeat-x;
+_background-image: none;
+}
+
+/* headers w/o any overlay */
+.FlashTimeline .splHeader-primary {
+    background-image: none;
+}
+
+/* borders 
+---------------------------------*/
+
+/* ALL elements with a generic border attribute */
+* { 
+border-color: #ccc;
+}
+
+
+/* specific overrides */ 
+
+.fieldValuePopup table tr.fieldNameHeaderRow th {
+border-bottom:1px solid #ccc;
+}
+
+/* horixontal rules in the sidebar */ 
+.splDivider, .SuggestedFieldViewer .splBorder-n {
+border-color: #ccc;
+}
+
+
+
+
+/* search controls 
+---------------------------------*/
+
+/* search button color; background-position of 0 0 is black, -40px 0 is white */
+input.searchButton {
+    background-position:-40px 0;   
+}
+
+input[disabled]{
+background-color: transparent;
+border-color: transparent;
+}
+
+
+/*-- background color for icons --*/
+.splIcon {
+    background-color: #999;
+}
+
+/*-- switchers that use icons  --*/
+
+.ButtonSwitcher ul li.selected, .ButtonSwitcher ul li.selected:hover,
+.EventsViewer .default .actions,
+div.FlashTimeline a.logScaleSelected span, div.FlashTimeline a.linScaleSelected span  {
+    border: 1px solid #999;
+    background-color: #999;
+}
+
+/*-- paginator uses similar styles --*/
+
+.Paginator .active a, .Paginator .active a:hover {
+    background-color: #999;
+    border-color: #999;
+    color: #fff;
+}
+
+/*-- arrow icons --*/
+.splIcon-arrow-n, .splIcon-arrow-e, .splIcon-arrow-s, .splIcon-arrow-w {
+    background-color: #999;
+}
+
+/* triangles. keep this last to avoid getting background colors in the arrows! */
+/* Note: to separate color from implementation, we're using a numbering system to differentiate colors.  
+   1=grey,2=white,3=green,4=black,5=blue.  If the icon sprite changes, the number mapping to colors would be different */
+.splIcon-triangle, 
+.splIcon-triangle-1-n, .splIcon-triangle-1-s, .splIcon-triangle-1-e, .splIcon-triangle-1-w,
+.splIcon-triangle-2-n, .splIcon-triangle-2-s, .splIcon-triangle-2-e, .splIcon-triangle-2-w,
+.splIcon-triangle-3-n, .splIcon-triangle-3-s, .splIcon-triangle-3-e, .splIcon-triangle-3-w,
+.splIcon-triangle-4-n, .splIcon-triangle-4-s, .splIcon-triangle-4-e, .splIcon-triangle-4-w,
+.splIcon-triangle-5-n, .splIcon-triangle-5-s, .splIcon-triangle-5-e, .splIcon-triangle-5-w {
+    background-color:transparent;   
+}
+.splIcon-triangle-large {
+    background-color:transparent;  
+}
+
+
+
+
+.ui-datepicker-links {
+    background-image: url(overlay_gradient.png) repeat-x 0 0;
+    _background-image: none;
+} 
+
+/* popups 
+---------------------------------*/
+.splHeader-popup {
+    background-color: #000;
+    background-image: url(overlay_gradient.png);
+    background-repeat: repeat-x;
+    _background-image: none;
+}
+
+.splHeader-popup h2 {
+    color:#FFF; 
+}
+
+/* modal overlay */
+.splOverlay, .splOverlay-white {
+    background-color: #000;    
+    opacity:0.8;
+    filter:alpha(opacity=80);
+}
+.splOverlay-white {
+    background-color:#FFF;  
+}
+
+/* Misc 
+---------------------------------*/
+
+/* resize handle */
+.ui-resizable-s {
+background-color:#ccc !important;
+}
+
+
+
+/* remove the gradient at top of event and results area */
+.EventsViewer, .SimpleResultsTableResults {
+background-image: none;
+}
+
+
+/* NEW MODS */
+body, a, label, text.under-label {
+	font-weight: 200 !important;
+}
+
+.dashboard-row .dashboard-panel h2.panel-title {
+	font-weight: 200 !important;
+	font-size: 1.5em !important;
+}
+
+text.single-result {
+	font-weight: 100 !important;
+}
+
+.dashboard-header h2 {
+	font-size: 2.5em !important;
+	font-weight: 100 !important;
+}

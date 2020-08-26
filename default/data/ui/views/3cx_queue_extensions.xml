@@ -1,0 +1,365 @@
+<form stylesheet="table_highlight.css" script="table_highlight.js">
+  <label>Queue Extensions</label>
+  <fieldset submitButton="false">
+    <input type="multiselect" token="hosts3" searchWhenChanged="true">
+      <label>Office Name</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>officeNames</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>`default_index`
+| lookup host_lookup.csv host OUTPUT hostname
+| eval officeNames = if(isnull(hostname),host,hostname)
+| dedup officeNames
+| table host, officeNames
+| sort + host</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <delimiter> OR </delimiter>
+      <valuePrefix>host=</valuePrefix>
+    </input>
+    <input type="multiselect" token="queue1" searchWhenChanged="true">
+      <label>Queue(s)</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>q_field</fieldForLabel>
+      <fieldForValue>q_name</fieldForValue>
+      <search>
+        <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ | dedup q_name  | eval q_field = q_name + " (" + q_num +")" | table  q_name, q_num, q_field | sort  + q_name</query>
+        <earliest>0</earliest>
+        <latest></latest>
+      </search>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <delimiter> OR </delimiter>
+      <valuePrefix>q_name="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="dropdown" token="extNum" searchWhenChanged="true">
+      <label>Agent</label>
+      <selectFirstChoice>true</selectFirstChoice>
+      <fieldForLabel>AgentE</fieldForLabel>
+      <fieldForValue>AgentE</fieldForValue>
+      <search>
+        <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval Agent = ag_fname + " " + ag_lname
+| eval AgentE = Agent+" (Ext."+to_dn+")"
+| dedup Agent
+| where to_dn!="" AND to_dn!="1000" 
+| Table AgentE
+| sort + AgentE</query>
+        <earliest>@y</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="time" token="tspan1" searchWhenChanged="true">
+      <label>Time Span</label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Extension Agent</title>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$ | eval ex = "$extNum$" | table ex</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Display Name</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Activity</title>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:agent_logins"
+ $hosts3$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent
+| eval logoutTime = strptime(logouttime, "%Y-%m-%d %H:%M:%S%z") 
+| sort - logoutTime
+| eval LogoutTime = strftime(strptime(logouttime,"%Y-%m-%d %H:%M:%S%z"),"%b %d, %Y %I:%M %p")
+| rename LogoutTime AS "Last time active"
+| table "Last time active"
+| head 1</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Last time active</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Queues involved in</title>
+      <table>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname 
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent
+| table q_name, q_num
+| sort + q_name
+| dedup q_name
+| rename q_name AS "Queue Name", q_num AS "Queue Number"</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="count">5</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Totals for $extNum$</title>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent
+| stats count</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="height">60</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Total Calls</option>
+      </single>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent AND isserviced = 1
+| stats count</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="height">60</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Calls Answered</option>
+      </single>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent AND isserviced = 0
+| stats count</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">60</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Calls Missed</option>
+      </single>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent AND isserviced = 0 AND reason_failcode = 0
+| stats count</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">60</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Abandoned Calls</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Calls Answered/Unanswered/Failed</title>
+      <input type="dropdown" token="tmspan" searchWhenChanged="true">
+        <label>Time Span</label>
+        <choice value="1d">Daily</choice>
+        <choice value="1h">Hourly</choice>
+        <choice value="1w">Weekly</choice>
+        <default>1d</default>
+        <initialValue>1d</initialValue>
+      </input>
+      <chart>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent
+| dedup idcallcent_queuecalls
+| eval Answered = if(isserviced="1","Answered",if(reason_failcode="0","Unanswered","Failed"))
+| timechart span=$tmspan$ count by Answered
+| rename q_name as Queue</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="height">342</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Call Activity Heat Map</title>
+      <chart>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent
+| timechart span=1h count
+| eval hour=strftime(_time,"%H") 
+| stats sum(count) as "Call Activity" by hour</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="charting.axisTitleY.text">Frequency</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="height">392</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent AND isserviced=1
+| stats avg(tot_ringing_sec) as avgTT
+| eval avgTT = strftime(avgTT,"00:%M:%S")</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="height">60</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Average Ringing Time</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent AND isserviced = 1 
+| stats avg(tot_servicing_sec) as avgTT
+| eval avgTT = strftime(avgTT,"00:%M:%S")</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="height">60</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Average Talk Duration</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent AND isserviced = 1 
+| stats avg(tot_agent_polling_sec) as avgTT
+| eval avgTT = strftime(avgTT,"00:%M:%S")</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="height">60</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Average Polling Time</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Calls Timeline</title>
+      <input type="time" token="timelinecallspicker" searchWhenChanged="true">
+        <label></label>
+        <default>
+          <earliest>-1d@d</earliest>
+          <latest>@d</latest>
+        </default>
+      </input>
+      <viz type="timeline_app.timeline">
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval AgentName = ag_fname+" "+ag_lname
+| eval Ag = replace("$extNum$"," \(Ext.*","")
+| where AgentName = Ag
+| eval Status = if(isserviced="1", "Answered Call", if(reason_failcode="0", "Unanswered Call", "Failed Call"))
+| eval Duration = (tot_locating_sec+tot_polling_sec+tot_ringing_sec+tot_servicing_sec+tot_waiting_sec)*1000
+| eval StartTime = strptime(time_start, "%Y-%m-%d %H:%M:%S%z")
+| stats count by StartTime, Duration, AgentName, Status
+| table StartTime, Status, AgentName, Duration</query>
+          <earliest>$timelinecallspicker.earliest$</earliest>
+          <latest>$timelinecallspicker.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">134</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="timeline_app.timeline.axisTimeFormat">SECONDS</option>
+        <option name="timeline_app.timeline.colorMode">categorical</option>
+        <option name="timeline_app.timeline.maxColor">#DA5C5C</option>
+        <option name="timeline_app.timeline.minColor">#FFE8E8</option>
+        <option name="timeline_app.timeline.numOfBins">6</option>
+        <option name="timeline_app.timeline.tooltipTimeFormat">SECONDS</option>
+        <option name="timeline_app.timeline.useColors">1</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Calls Involved In</title>
+      <table id="highlight">
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
+| eval ex = ag_fname+" "+ag_lname
+| eval Agent = replace("$extNum$"," \(Ext.*","")
+| where ex = Agent
+| eval Outcome = if(isserviced="1","Call was answered","Call was not answered") 
+| eval newtime =  if(isnull(time_start) OR time_start = "00:00:00", "00:00:00",time_start)
+| eval formatTime = strftime(strptime(time_start,"%Y-%m-%d %H:%M:%S"),"%b %d, %Y %I:%M:%S %p")
+| eval RingT = tostring(tot_ringing_sec,"duration") | rex field=RingT "(?&lt;RingTm&gt;.*\.\d)"
+| eval TalkT = tostring(tot_servicing_sec,"duration") | rex field=TalkT "(?&lt;TalkTm&gt;.*\.\d)"
+| rename TalkTm as "Talking (s)", RingTm as "Ringing (s)", idcallcent_queuecalls as "Call ID", formatTime as "Time", from_displayname as "From", q_num as "Queue"
+| table "Call ID", "Time", "From", "Queue", Agent, "Ringing (s)","Talking (s)", Outcome</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
+        </search>
+        <option name="count">25</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="Outcome">
+          <colorPalette type="map">{"Call was not answered":#FF8585,"Call was answered":#97C978}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

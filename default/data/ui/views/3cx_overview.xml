@@ -1,0 +1,221 @@
+<form>
+  <label>Overview</label>
+  <description>Includes statistics both Queue and Non-Queue Calls</description>
+  <fieldset submitButton="false"></fieldset>
+  <row>
+    <panel>
+      <title>Calls Overview</title>
+      <input type="multiselect" token="hosts1" searchWhenChanged="true">
+        <label>Office Name</label>
+        <choice value="*">All</choice>
+        <valuePrefix>host=</valuePrefix>
+        <delimiter> OR </delimiter>
+        <fieldForLabel>officeNames</fieldForLabel>
+        <fieldForValue>host</fieldForValue>
+        <search>
+          <query>`default_index`
+| lookup host_lookup.csv host OUTPUT hostname
+| eval officeNames = if(isnull(hostname),host,hostname)
+| dedup officeNames
+| table host, officeNames
+| sort + host</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <initialValue>*</initialValue>
+      </input>
+      <input type="dropdown" token="callDir" searchWhenChanged="true">
+        <label>Call Direction</label>
+        <choice value="inout=*">All</choice>
+        <choice value="inout=&quot;Inbound&quot;">Inbound</choice>
+        <choice value="inout=&quot;Outbound&quot;">Outbound</choice>
+        <default>inout=*</default>
+        <initialValue>inout=*</initialValue>
+      </input>
+      <input type="text" token="slatime" searchWhenChanged="true">
+        <label>SLA Limit (Seconds)</label>
+        <default>30</default>
+        <initialValue>30</initialValue>
+      </input>
+      <input type="time" token="tOverview" searchWhenChanged="true">
+        <label>Time Frame</label>
+        <default>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <single>
+        <search>
+          <query>index=main | head 1 | eval current_time_zone=strftime(now(),"%Z") | table current_time_zone</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
+        <option name="height">70</option>
+        <option name="underLabel">Your Current Time Zone</option>
+      </single>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ $callDir$ 
+| dedup id 
+| stats count</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
+        <option name="height">70</option>
+        <option name="refresh.display">preview</option>
+        <option name="underLabel">Total Calls</option>
+      </single>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ $callDir$ | where is_answered="t" | dedup id | stats count</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
+        <option name="height">70</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Total Calls Answered</option>
+      </single>
+      <single>
+        <search>
+          <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ $callDir$ | where is_answered="f" | dedup id | stats count</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
+        <option name="height">70</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Total Calls Unanswered/Abandoned</option>
+      </single>
+      <chart>
+        <title>Daily Call Activity</title>
+        <search>
+          <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ $callDir$
+| dedup id 
+| eval status = if(is_answered="t","Answered","Unanswered")
+| timechart count by status span=1d</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.legend.placement">top</option>
+        <option name="height">370</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Daily Call Expectancy - Heat Map</title>
+      <chart>
+        <title>Hourly Heat Map</title>
+        <search>
+          <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ $callDir$
+| dedup id
+| timechart span=1h count
+| eval Hour=strftime(_time,"%H") 
+| stats sum(count) as Calls by Hour</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">gaps</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="height">204</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+      <chart>
+        <title>Call Time Distribution</title>
+        <search>
+          <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ $callDir$
+| dedup id
+| where inout="Inbound"
+| eval hourOfCall=strftime(_time,"%H")
+| eval timeOfDay = case(hourOfCall&lt;6, "Early Morning", hourOfCall&gt;5 AND hourOfCall&lt;12, "Morning", hourOfCall&gt;11 AND hourOfCall&lt;17, "Afternoon", hourOfCall&gt;16, "Evening")
+| stats count as "Calls" by timeOfDay
+| rename timeOfDay as "Time of Day"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Queue Summary</title>
+      <chart>
+        <title>Calls Distribution for Each Queue</title>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts1$
+| dedup idcallcent_queuecalls
+| eval SLTime = q_name
+| eval ct = "Calls"
+| chart count AS QCalls by ct, SLTime</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.placement">top</option>
+        <option name="height">200</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+      <chart>
+        <title>SLA Breaches for each Queue</title>
+        <search>
+          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts1$
+| dedup idcallcent_queuecalls
+| eval breaches = if(tot_ringing_sec&gt;$slatime$,1,0)
+| stats sum(breaches) as "SLA Breaches" by q_name</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Most Recent Calls</title>
+      <table id="highlight">
+        <search>
+          <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ $callDir$
+| dedup id
+| where inout="Inbound" 
+| eval ringing_dur = if(isnull(ringing_dur) OR ringing_dur = "00:00:00.000000", "00:00:00.000000",strftime(strptime(ringing_dur, "%H:%M:%S.%3N"), "%H:%M:%S.%3N"))
+| eval talking_dur = if(isnull(talking_dur) OR talking_dur = "00:00:00.000000", "00:00:00.000000",strftime(strptime(talking_dur, "%H:%M:%S.%3N"), "%H:%M:%S.%3N"))
+| eval duration=strftime((strptime(ringing_dur, "%H:%M:%S.%3N") + strptime(talking_dur, "%H:%M:%S.%3N")), "%H:%M:%S.%3N")
+| eval ans = if(is_answered = "f","Call was not answered", "Call was answered")
+| eval s_time = strftime(_time,"%m/%d/%y %H:%M:%S%z")
+| rename s_time as "Start Time", duration as Duration, ringing_dur as "Ringing (s)", talking_dur as "Talking (s)", caller_number as "Caller", is_answered as Answered, ans as "Call Outcome"
+| table "Start Time", "Caller", Duration, "Ringing (s)", "Talking (s)", "Call Outcome"
+| sort "Start Time" by DESC</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="Call Outcome">
+          <colorPalette type="map">{"Call was answered":#A2CC3E,"Call was not answered":#D93F3C}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

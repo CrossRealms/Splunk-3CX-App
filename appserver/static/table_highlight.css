@@ -1,0 +1,14 @@
+/* Row Coloring */
+#highlight tr.answered td {
+	background-color: green !important;
+	background-color: #d9ffc4 !important; /* Call Answered */
+}
+
+#highlight tr.unanswered td {
+	background-color: red !important;
+	background-color: #ffc4c4 !important; /* Call Not Answered */
+}
+
+#highlight th td {
+	text-align:center;
+}
