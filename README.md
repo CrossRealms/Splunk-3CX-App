@@ -93,7 +93,7 @@ UNINSTALL APP
 To uninstall app, user can follow below steps:
 * SSH to the Splunk instance
 * Go to folder apps($SPLUNK_HOME/etc/apps)
-* Remove the checkpoint_dome9_app_for_splunk folder from apps directory
+* Remove the `splunk_app_3cx` folder from apps directory
 * Restart Splunk
 
 KNOWN LIMITATION
