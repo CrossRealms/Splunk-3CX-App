@@ -69,6 +69,9 @@ For data collection we need to setup Splunk DB Connect on Heavy Forwarder.
   * Identity: Choose the identity 3CX Created in first step.
   * Connection Type: Postgress
   * Timezone: Select Timezone if required.
+  * Host: Host of 3CX
+  * Port: Port of postgress database from 3CX system. (Defaults to 5480)
+  * Default Database: database_single (Default database for 3CX system)
   * Click on Save.
 
 * Download the Splunk App For 3CX and extract the archive. 
