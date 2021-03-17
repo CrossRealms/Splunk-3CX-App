@@ -101,6 +101,8 @@
       <prefix>(</prefix>
       <suffix>)</suffix>
       <delimiter> OR </delimiter>
+      <valuePrefix>(</valuePrefix>
+      <valueSuffix>)</valueSuffix>
     </input>
   </fieldset>
   <row>
