@@ -14,7 +14,7 @@ query = SELECT calls.id, calls.start_time, calls.end_time, calls.is_answered, ca
 FROM cl_calls as calls INNER JOIN \
 (SELECT calls.id, Min(segs.id) AS segID FROM cl_calls as calls INNER JOIN cl_segments as segs ON calls.id = segs.call_id GROUP BY calls.id) \
 AS Callss ON calls.id = Callss.id INNER JOIN \
-cl_segments as segs ON segs.id = callss.segID JOIN cl_party_info as partinfo ON partinfo.id = segs.call_id WHERE calls.start_time > now() - interval '30 minutes'\
+cl_segments as segs ON segs.id = callss.segID JOIN cl_party_info as partinfo ON partinfo.id = segs.call_id WHERE calls.start_time > now() - interval '30 minutes'
 sourcetype = 3cx:calls_view
 
 

@@ -23,6 +23,8 @@
           <latest></latest>
         </search>
         <initialValue>*</initialValue>
+        <prefix>(</prefix>
+        <suffix>)</suffix>
       </input>
       <input type="dropdown" token="callDir" searchWhenChanged="true">
         <label>Call Direction</label>
@@ -46,7 +48,7 @@
       </input>
       <single>
         <search>
-          <query>index=main | head 1 | eval current_time_zone=strftime(now(),"%Z") | table current_time_zone</query>
+          <query>index=* | head 1 | eval current_time_zone=strftime(now(),"%Z") | table current_time_zone</query>
           <earliest>$tOverview.earliest$</earliest>
           <latest>$tOverview.latest$</latest>
         </search>
@@ -142,8 +144,8 @@
 | eval timeOfDay = case(hourOfCall&lt;6, "Early Morning", hourOfCall&gt;5 AND hourOfCall&lt;12, "Morning", hourOfCall&gt;11 AND hourOfCall&lt;17, "Afternoon", hourOfCall&gt;16, "Evening")
 | stats count as "Calls" by timeOfDay
 | rename timeOfDay as "Time of Day"</query>
-          <earliest>-24h@h</earliest>
-          <latest>now</latest>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
         </search>
         <option name="charting.chart">pie</option>
         <option name="charting.drilldown">none</option>
