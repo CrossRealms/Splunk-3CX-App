@@ -139,7 +139,6 @@
         <search>
           <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ $callDir$
 | dedup id
-| where inout="Inbound"
 | eval hourOfCall=strftime(_time,"%H")
 | eval timeOfDay = case(hourOfCall&lt;6, "Early Morning", hourOfCall&gt;5 AND hourOfCall&lt;12, "Morning", hourOfCall&gt;11 AND hourOfCall&lt;17, "Afternoon", hourOfCall&gt;16, "Evening")
 | stats count as "Calls" by timeOfDay
@@ -199,7 +198,6 @@
         <search>
           <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ $callDir$
 | dedup id
-| where inout="Inbound" 
 | eval ringing_dur = if(isnull(ringing_dur) OR ringing_dur = "00:00:00.000000", "00:00:00.000000",strftime(strptime(ringing_dur, "%H:%M:%S.%3N"), "%H:%M:%S.%3N"))
 | eval talking_dur = if(isnull(talking_dur) OR talking_dur = "00:00:00.000000", "00:00:00.000000",strftime(strptime(talking_dur, "%H:%M:%S.%3N"), "%H:%M:%S.%3N"))
 | eval duration=strftime((strptime(ringing_dur, "%H:%M:%S.%3N") + strptime(talking_dur, "%H:%M:%S.%3N")), "%H:%M:%S.%3N")
