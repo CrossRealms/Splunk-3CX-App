@@ -73,7 +73,7 @@
         <search>
           <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
 | dedup idcallcent_queuecalls
-| where isnotnull(q_num) AND reason_noanswerdesc="" AND reason_failcode=0
+| where isnotnull(q_num) AND (isnull(reason_noanswerdesc) OR reason_noanswerdesc="") AND reason_failcode=0
 | stats count</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>
@@ -99,7 +99,7 @@
         <search>
           <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
 | dedup idcallcent_queuecalls
-| where isnotnull(q_num) AND reason_noanswerdesc="" AND reason_failcode != 0
+| where isnotnull(q_num) AND (isnull(reason_noanswerdesc) OR reason_noanswerdesc="") AND reason_failcode != 0
 | stats count</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>
