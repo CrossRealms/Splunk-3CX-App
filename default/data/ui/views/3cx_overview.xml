@@ -198,9 +198,13 @@
         <search>
           <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ ($callDir$)
 | dedup id
-| eval ringing_dur = if(isnull(ringing_dur) OR ringing_dur = "00:00:00.000000", "00:00:00.000000",strftime(strptime(ringing_dur, "%H:%M:%S.%3N"), "%H:%M:%S.%3N"))
-| eval talking_dur = if(isnull(talking_dur) OR talking_dur = "00:00:00.000000", "00:00:00.000000",strftime(strptime(talking_dur, "%H:%M:%S.%3N"), "%H:%M:%S.%3N"))
-| eval duration=strftime((strptime(ringing_dur, "%H:%M:%S.%3N") + strptime(talking_dur, "%H:%M:%S.%3N")), "%H:%M:%S.%3N")
+| eval ringing_dur = if(isnull(ringing_dur) OR ringing_dur="00:00:00.000000" OR ringing_dur="00:00:00.00000", "00:00:00.000", strftime(strptime(ringing_dur, "%H:%M:%S.%3N"), "%H:%M:%S.%3N"))
+| eval talking_dur = if(isnull(talking_dur) OR talking_dur="00:00:00.000000" OR ringing_dur="00:00:00.00000", "00:00:00.000",strftime(strptime(talking_dur, "%H:%M:%S.%3N"), "%H:%M:%S.%3N"))
+| rex field=ringing_dur "(?&lt;hour&gt;\d{2}):(?&lt;minute&gt;\d{2}):(?&lt;second&gt;\d{2})\.(?&lt;microsecond&gt;\d{3})"
+| eval ringing = hour*3600 + minute*60 + second + microsecond/1000
+| rex field=talking_dur "(?&lt;hour&gt;\d{2}):(?&lt;minute&gt;\d{2}):(?&lt;second&gt;\d{2})\.(?&lt;microsecond&gt;\d{3})"
+| eval talking = hour*3600 + minute*60 + second + microsecond/1000
+| eval duration = tostring(round(ringing + talking, 3), "duration")
 | eval ans = if(is_answered = "f","Call was not answered", "Call was answered")
 | eval s_time = strftime(_time,"%m/%d/%y %H:%M:%S%z")
 | rename s_time as "Start Time", duration as Duration, ringing_dur as "Ringing (s)", talking_dur as "Talking (s)", caller_number as "Caller", is_answered as Answered, ans as "Call Outcome"
