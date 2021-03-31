@@ -111,7 +111,7 @@
       <table id="callrep">
         <search>
           <query>`default_index` sourcetype="3cx:call_report" 
-$hosts4$ $iext$ $exnums$ $pcallid$ $qcallopt$ $calldire$
+$hosts4$ $iext$ $exnums$ ($pcallid$) $qcallopt$ ($calldire$)
 | eval call_start_time = strftime(strptime(call_start_time,"%Y-%m-%d %H:%M:%S"),"%m/%d/%Y %I:%M:%S %p%z")
 | eval recording_url = if(isnull(recording_url), "NOREC", recording_url) 
 | eval rec_url = replace(replace(replace(replace(replace(replace(replace(recording_url, "\)", "%2529"), "\(", "%2528"), " ", "%2520"), "\]", "%255D"), "\[", "%255B"), "%3A", "%25253A"), "\/", "%252F")
