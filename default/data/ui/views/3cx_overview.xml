@@ -117,9 +117,9 @@
         <search>
           <query>`default_index` sourcetype="3cx:calls_view" $hosts1$ ($callDir$)
 | dedup id
-| timechart span=1h count
+| timechart span=1h count by inout
 | eval Hour=strftime(_time,"%H") 
-| stats sum(count) as Calls by Hour</query>
+| stats sum(*) as * by Hour</query>
           <earliest>$tOverview.earliest$</earliest>
           <latest>$tOverview.latest$</latest>
         </search>
@@ -127,9 +127,10 @@
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
         <option name="charting.axisY.abbreviation">none</option>
         <option name="charting.axisY.scale">linear</option>
-        <option name="charting.chart">line</option>
+        <option name="charting.chart">area</option>
         <option name="charting.chart.nullValueMode">gaps</option>
-        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.stackMode">stacked</option>
         <option name="charting.drilldown">none</option>
         <option name="height">204</option>
         <option name="refresh.display">progressbar</option>
