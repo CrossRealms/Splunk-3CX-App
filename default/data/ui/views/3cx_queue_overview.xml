@@ -270,7 +270,6 @@ sum(SlaP) as SlaPc by Queue
         <option name="charting.chart">column</option>
         <option name="charting.chart.showDataLabels">all</option>
         <option name="charting.chart.stackMode">default</option>
-        <option name="charting.drilldown">none</option>
         <option name="charting.legend.placement">top</option>
         <option name="refresh.display">progressbar</option>
       </chart>
