@@ -111,7 +111,21 @@
   </row>
   <row>
     <panel>
-      <title>Daily Call Expectancy - Heat Map</title>
+      <title>Daily Call Expectancy vs Agent Logins</title>
+      <input type="dropdown" token="tkn_aggregation_call">
+        <label>Aggregation for Heat Map</label>
+        <choice value="sum">Summation</choice>
+        <choice value="avg">Average</choice>
+        <default>sum</default>
+      </input>
+      <input type="dropdown" token="tkn_agent_login_less_than">
+        <label>Exclude Agent Login</label>
+        <choice value="0">Do not exclude any logins</choice>
+        <choice value="300">Less than 5 minutes</choice>
+        <choice value="1800">Less than 30 minutes</choice>
+        <choice value="3600">Less than 1 hour</choice>
+        <default>1800</default>
+      </input>
       <chart>
         <title>Hourly Heat Map</title>
         <search>
@@ -119,7 +133,16 @@
 | dedup id
 | timechart span=1h count by inout
 | eval Hour=strftime(_time,"%H") 
-| stats sum(*) as * by Hour</query>
+| stats $tkn_aggregation_call$(*) as * by Hour
+| append [| search `default_index` sourcetype="3cx:agent_logins" $hosts1$
+| dedup ag_num, logintime
+| where secondsloggedin&gt;$tkn_agent_login_less_than$
+| eval starttime=strptime(logintime,"%Y-%m-%d %H:%M:%S%:::z"),endtime=strptime(logouttime,"%Y-%m-%d %H:%M:%S%:::z")
+| eval time = mvrange(starttime,endtime,"1h") | mvexpand time | eval _time = time
+| timechart span=1h count
+| eval Hour=strftime(_time,"%H") | stats $tkn_aggregation_agent_login$(count) as Agents_LoggedIn by Hour]
+| stats first(*) as * by Hour
+| fillnull Agents_LoggedIn value=0</query>
           <earliest>$tOverview.earliest$</earliest>
           <latest>$tOverview.latest$</latest>
         </search>
@@ -127,13 +150,15 @@
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
         <option name="charting.axisY.abbreviation">none</option>
         <option name="charting.axisY.scale">linear</option>
-        <option name="charting.chart">area</option>
+        <option name="charting.chart">column</option>
         <option name="charting.chart.nullValueMode">gaps</option>
-        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.chart.overlayFields">Agents_LoggedIn</option>
+        <option name="charting.chart.showDataLabels">none</option>
         <option name="charting.chart.stackMode">stacked</option>
         <option name="charting.drilldown">none</option>
         <option name="height">204</option>
         <option name="refresh.display">progressbar</option>
+        <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Agents_LoggedIn": #006caa}</option>
       </chart>
       <chart>
         <title>Call Time Distribution</title>
