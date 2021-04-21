@@ -140,9 +140,10 @@
 | eval starttime=strptime(logintime,"%Y-%m-%d %H:%M:%S%:::z"),endtime=strptime(logouttime,"%Y-%m-%d %H:%M:%S%:::z")
 | eval time = mvrange(starttime,endtime,"1h") | mvexpand time | eval _time = time
 | timechart span=1h count
-| eval Hour=strftime(_time,"%H") | stats $tkn_aggregation_agent_login$(count) as Agents_LoggedIn by Hour]
+| eval Hour=strftime(_time,"%H") | stats $tkn_aggregation_call$(count) as Agents_LoggedIn by Hour]
 | stats first(*) as * by Hour
-| fillnull Agents_LoggedIn value=0</query>
+| fillnull Agents_LoggedIn value=0
+| eval Agents_LoggedIn=if($tkn_aggregation_call|s$="avg", round(Agents_LoggedIn, 1), Agents_LoggedIn), Inbound=if($tkn_aggregation_call|s$="avg", round(Inbound, 1), Inbound), Outbound=if($tkn_aggregation_call|s$="avg", round(Outbound, 1), Outbound)</query>
           <earliest>$tOverview.earliest$</earliest>
           <latest>$tOverview.latest$</latest>
         </search>
