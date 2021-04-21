@@ -149,11 +149,19 @@
       <chart>
         <title>Hourly Heat Map</title>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$
-| dedup idcallcent_queuecalls 
-| timechart span=1h count
+          <query>`default_index` sourcetype="3cx:call_report" $hosts2$
+| eval call_dir = case((src_type=1 OR src_type=0), "Inbound", (dst_type=13 OR dst_type=1), "Outbound", 1==1, "Other")
+| eval call_start_time = strptime(call_start_time,"%Y-%m-%d %H:%M:%S")
+| eval dst_display_name=if(isnull(dst_display_name), dst_caller_number, dst_display_name)
+| stats count by call_id, call_start_time, seq_order, dst_dn, dst_caller_number, dst_display_name, has_queue, call_dir
+| fields - count | sort -call_id, + seq_order
+| eval q_num=if(has_queue=1, dst_dn, null())
+| stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num by call_id, call_start_time
+| search $queues1$ | where has_queue&gt;0
+| rename call_start_time as _time
+| timechart span=1h count by call_dir
 | eval Hour=strftime(_time,"%H") 
-| stats $tkn_aggregation$(count) as Calls by Hour
+| stats $tkn_aggregation$(*) as * by Hour
 | append [| search `default_index` sourcetype="3cx:agent_logins" $hosts2$ $queues1$
 | dedup ag_num, logintime
 | where secondsloggedin&gt;$tkn_agent_login_less_than$
@@ -162,15 +170,17 @@
 | timechart span=1h count
 | eval Hour=strftime(_time,"%H") | stats $tkn_aggregation$(count) as Agents_LoggedIn by Hour]
 | stats first(*) as * by Hour
-| fillnull Agents_LoggedIn, Calls value=0</query>
+| fillnull Agents_LoggedIn, Inbound, Outbound, Other value=0
+| eval Agents_LoggedIn=if($tkn_aggregation|s$="avg", round(Agents_LoggedIn, 1), Agents_LoggedIn), Inbound=if($tkn_aggregation|s$="avg", round(Inbound, 1), Inbound), Outbound=if($tkn_aggregation|s$="avg", round(Outbound, 1), Outbound), Other=if($tkn_aggregation|s$="avg", round(Other, 1), Other)</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>
         </search>
         <option name="charting.chart">column</option>
         <option name="charting.chart.overlayFields">Agents_LoggedIn</option>
+        <option name="charting.chart.stackMode">stacked</option>
         <option name="charting.drilldown">none</option>
+        <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Other": #cce34d, "Agents_LoggedIn": #006caa}</option>
         <option name="refresh.display">progressbar</option>
-        <option name="charting.fieldColors">{"Calls":#4fa483, "Agents_LoggedIn": #006caa}</option>
       </chart>
     </panel>
   </row>
