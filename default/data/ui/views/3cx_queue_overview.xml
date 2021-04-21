@@ -150,7 +150,7 @@
         <title>Hourly Heat Map</title>
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$
-| eval call_dir = case((src_type=1 OR src_type=0), "Inbound", (dst_type=13 OR dst_type=1), "Outbound", 1==1, "Other")
+| eval call_dir = case((src_type=0 AND (dst_type=1 OR dst_type=13)), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
 | eval call_start_time = strptime(call_start_time,"%Y-%m-%d %H:%M:%S")
 | eval dst_display_name=if(isnull(dst_display_name), dst_caller_number, dst_display_name)
 | stats count by call_id, call_start_time, seq_order, dst_dn, dst_caller_number, dst_display_name, has_queue, call_dir
@@ -158,6 +158,7 @@
 | eval q_num=if(has_queue=1, dst_dn, null())
 | stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num by call_id, call_start_time
 | search $queues1$ | where has_queue&gt;0
+| eval call_dir=if(isnull(call_dir), "Other", call_dir)
 | rename call_start_time as _time
 | timechart span=1h count by call_dir
 | eval Hour=strftime(_time,"%H") 
@@ -170,8 +171,8 @@
 | timechart span=1h count
 | eval Hour=strftime(_time,"%H") | stats $tkn_aggregation$(count) as Agents_LoggedIn by Hour]
 | stats first(*) as * by Hour
-| fillnull Agents_LoggedIn, Inbound, Outbound, Other value=0
-| eval Agents_LoggedIn=if($tkn_aggregation|s$="avg", round(Agents_LoggedIn, 1), Agents_LoggedIn), Inbound=if($tkn_aggregation|s$="avg", round(Inbound, 1), Inbound), Outbound=if($tkn_aggregation|s$="avg", round(Outbound, 1), Outbound), Other=if($tkn_aggregation|s$="avg", round(Other, 1), Other)</query>
+| fillnull Agents_LoggedIn, Inbound, Outbound, Internal value=0
+| eval Agents_LoggedIn=if($tkn_aggregation|s$="avg", round(Agents_LoggedIn, 1), Agents_LoggedIn), Inbound=if($tkn_aggregation|s$="avg", round(Inbound, 1), Inbound), Outbound=if($tkn_aggregation|s$="avg", round(Outbound, 1), Outbound), Internal=if($tkn_aggregation|s$="avg", round(Internal, 1), Internal), Other=if($tkn_aggregation|s$="avg", round(Other, 1), Other)</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>
         </search>
@@ -179,7 +180,7 @@
         <option name="charting.chart.overlayFields">Agents_LoggedIn</option>
         <option name="charting.chart.stackMode">stacked</option>
         <option name="charting.drilldown">none</option>
-        <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Other": #cce34d, "Agents_LoggedIn": #006caa}</option>
+        <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Internal": #af575a, "Other": #cce34d, "Agents_LoggedIn": #006caa}</option>
         <option name="refresh.display">progressbar</option>
       </chart>
     </panel>
@@ -190,7 +191,7 @@
       <chart>
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
-| eval call_dir = case((src_type=1 OR src_type=0), "Inbound", (dst_type=13 OR dst_type=1), "Outbound", 1==1, "Other")
+| eval call_dir = case((src_type=0 AND (dst_type=1 OR dst_type=13)), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
 | eval call_start_time = strptime(call_start_time,"%Y-%m-%d %H:%M:%S")
 | eval dst_display_name=if(isnull(dst_display_name), dst_caller_number, dst_display_name)
 | stats count by call_id, call_start_time, seq_order, dst_dn, dst_caller_number, dst_display_name, has_queue, call_dir
@@ -199,9 +200,11 @@
 | eval agent=if(has_queue=0, dst_caller_number." - ".dst_display_name, null())
 | stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by call_id, call_start_time
 | search $queues1$ Agent=* | where has_queue&gt;0
+| eval call_dir=if(isnull(call_dir), "Other", call_dir)
 | rename call_start_time as _time
 | mvexpand Agent
-| chart count(call_id) as count over Agent by call_dir</query>
+| chart count(call_id) as count over Agent by call_dir
+| fillnull Inbound, Outbound, Internal value=0</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>
         </search>
@@ -209,7 +212,7 @@
         <option name="charting.chart">column</option>
         <option name="charting.chart.stackMode">stacked</option>
         <option name="charting.drilldown">none</option>
-        <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Other": #cce34d}</option>
+        <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Internal": #af575a, "Other": #cce34d}</option>
         <option name="refresh.display">progressbar</option>
       </chart>
     </panel>
