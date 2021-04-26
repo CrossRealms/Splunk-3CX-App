@@ -121,10 +121,11 @@
       <input type="dropdown" token="tkn_agent_login_less_than">
         <label>Exclude Agent Login</label>
         <choice value="0">Do not exclude any logins</choice>
+        <choice value="60">Less than 1 minute</choice>
         <choice value="300">Less than 5 minutes</choice>
         <choice value="1800">Less than 30 minutes</choice>
         <choice value="3600">Less than 1 hour</choice>
-        <default>1800</default>
+        <default>60</default>
       </input>
       <chart>
         <title>Hourly Heat Map</title>
