@@ -33,6 +33,8 @@
       <search>
         <query>`default_index` sourcetype="3cx:call_report"
 | where dst_type=0 OR src_type=0
+| eval dst_display_name=if(isnull(dst_display_name), " ", dst_display_name)
+| eval src_display_name=if(isnull(src_display_name), " ", src_display_name)
 | eval ext = if(dst_type=0, dst_display_name+" ("+dst_caller_number+")", src_display_name+" ("+src_caller_number+")")
 | eval extn = if(dst_type=0, dst_caller_number, src_caller_number)
 | dedup extn | sort + ext
@@ -112,18 +114,20 @@
         <search>
           <query>`default_index` sourcetype="3cx:call_report" 
 $hosts4$ $iext$ $exnums$ ($pcallid$) $qcallopt$ 
+| dedup call_id, seq_order | sort 0 -call_id, + seq_order
 | eval call_dir = case((src_type=0 AND (dst_type=1 OR dst_type=13)), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
 | eval call_start_time = strftime(strptime(call_start_time,"%Y-%m-%d %H:%M:%S"),"%m/%d/%Y %I:%M:%S %p%z")
 | eval recording_url = if(isnull(recording_url), "NOREC", recording_url) 
 | eval rec_url = replace(replace(replace(replace(replace(replace(replace(recording_url, "\)", "%2529"), "\(", "%2528"), " ", "%2520"), "\]", "%255D"), "\[", "%255B"), "%3A", "%25253A"), "\/", "%252F")
 | eval hst = lower(host)
 | eval rec_link = if(rec_url="NOREC",rec_url,"https://"+hst+":5001/#/download_record/"+rec_url)
-| stats count by call_id, call_start_time ,seq_order, start_time, end_time, src_caller_number, src_display_name, dst_caller_number, dst_display_name, action, rec_link, call_dir
-| fields - count | sort -call_id, + seq_order
+| eval dst_display_name=if(isnull(dst_display_name), dst_caller_number, dst_display_name)
+| eval src_display_name=if(isnull(src_display_name), src_caller_number, src_display_name)
 | rename call_id as "Call ID", call_start_time as "Call Time", rec_link as Recording
 | stats first(call_dir) as call_dir, list(seq_order) as Sequence, list(start_time) as "Start Time", list(end_time) as "End Time", list(src_caller_number) as "Source Number", list(src_display_name) as "Source Name", list(dst_caller_number) as "Dest. Number", list(dst_display_name) as "Dest. Name", list(action) as "Action" by "Call ID", "Call Time", Recording
+| eval call_dir=if(isnull(call_dir), "Other", call_dir)
 | search call_dir IN $calldire$ | fields - call_dir
-| sort - "Call ID", + seq_order</query>
+| sort 0 - "Call ID", + seq_order</query>
           <earliest>$tspan1.earliest$</earliest>
           <latest>$tspan1.latest$</latest>
         </search>

@@ -151,12 +151,10 @@
         <title>Hourly Heat Map</title>
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$
+| dedup call_id, seq_order
 | eval call_dir = case((src_type=0 AND (dst_type=1 OR dst_type=13)), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
 | eval call_start_time = strptime(call_start_time,"%Y-%m-%d %H:%M:%S")
-| eval dst_display_name=if(isnull(dst_display_name), dst_caller_number, dst_display_name)
-| stats count by call_id, call_start_time, seq_order, dst_dn, dst_caller_number, dst_display_name, has_queue, call_dir
-| fields - count | sort -call_id, + seq_order
-| eval q_num=if(has_queue=1, dst_dn, null())
+| eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
 | stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num by call_id, call_start_time
 | search $queues1$ | where has_queue&gt;0
 | eval call_dir=if(isnull(call_dir), "Other", call_dir)
@@ -192,15 +190,14 @@
       <chart>
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
+| dedup call_id, seq_order
 | eval call_dir = case((src_type=0 AND (dst_type=1 OR dst_type=13)), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
 | eval call_start_time = strptime(call_start_time,"%Y-%m-%d %H:%M:%S")
-| eval dst_display_name=if(isnull(dst_display_name), dst_caller_number, dst_display_name)
-| stats count by call_id, call_start_time, seq_order, dst_dn, dst_caller_number, dst_display_name, has_queue, call_dir
-| fields - count | sort -call_id, + seq_order
-| eval q_num=if(has_queue=1, dst_dn, null())
-| eval agent=if(has_queue=0, dst_caller_number." - ".dst_display_name, null())
+| eval dst_display_name=if(isnull(dst_display_name), "N/A", dst_display_name)
+| eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
+| eval agent=case(dst_type=0, dst_caller_number." - ".dst_display_name, src_type=0, src_caller_number." - ".src_display_name, 1==1, null())
 | stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by call_id, call_start_time
-| search $queues1$ Agent=* | where has_queue&gt;0
+| search $queues1$ [| search `default_index` sourcetype="3cx:agent_logins" ($queues1$) | dedup ag_num | eval Agent="Ext.".ag_num." - ".ag_fname." ".ag_lname | fields Agent | table Agent] | where has_queue&gt;0
 | eval call_dir=if(isnull(call_dir), "Other", call_dir)
 | rename call_start_time as _time
 | mvexpand Agent
