@@ -115,7 +115,7 @@
           <query>`default_index` sourcetype="3cx:call_report" 
 $hosts4$ $iext$ $exnums$ ($pcallid$) $qcallopt$ 
 | dedup call_id, seq_order | sort 0 -call_id, + seq_order
-| eval call_dir = case((src_type=0 AND (dst_type=1 OR dst_type=13)), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
+| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
 | eval call_start_time = strftime(strptime(call_start_time,"%Y-%m-%d %H:%M:%S"),"%m/%d/%Y %I:%M:%S %p%z")
 | eval recording_url = if(isnull(recording_url), "NOREC", recording_url) 
 | eval rec_url = replace(replace(replace(replace(replace(replace(replace(recording_url, "\)", "%2529"), "\(", "%2528"), " ", "%2520"), "\]", "%255D"), "\[", "%255B"), "%3A", "%25253A"), "\/", "%252F")

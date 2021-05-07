@@ -152,7 +152,7 @@
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$
 | dedup call_id, seq_order
-| eval call_dir = case((src_type=0 AND (dst_type=1 OR dst_type=13)), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
+| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
 | eval call_start_time = strptime(call_start_time,"%Y-%m-%d %H:%M:%S")
 | eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
 | stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num by call_id, call_start_time
@@ -186,27 +186,95 @@
   </row>
   <row>
     <panel>
-      <title>Call Distribution for Agents</title>
+      <title>Queue Call Distribution for Queue Agents</title>
       <chart>
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
 | dedup call_id, seq_order
-| eval call_dir = case((src_type=0 AND (dst_type=1 OR dst_type=13)), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
-| eval call_start_time = strptime(call_start_time,"%Y-%m-%d %H:%M:%S")
+| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
+| eval src_display_name=if(isnull(src_display_name), "N/A", src_display_name)
 | eval dst_display_name=if(isnull(dst_display_name), "N/A", dst_display_name)
 | eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
 | eval agent=case(dst_type=0, dst_caller_number." - ".dst_display_name, src_type=0, src_caller_number." - ".src_display_name, 1==1, null())
-| stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by call_id, call_start_time
-| search $queues1$ [| search `default_index` sourcetype="3cx:agent_logins" ($queues1$) | dedup ag_num | eval Agent="Ext.".ag_num." - ".ag_fname." ".ag_lname | fields Agent | table Agent] | where has_queue&gt;0
+| stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by call_id
+| search $queues1$ | where has_queue&gt;0
 | eval call_dir=if(isnull(call_dir), "Other", call_dir)
-| rename call_start_time as _time
 | mvexpand Agent
+| search [| search `default_index` sourcetype="3cx:agent_logins" ($queues1$) | dedup ag_num | eval Agent="Ext.".ag_num." - ".ag_fname." ".ag_lname | fields Agent | table Agent]
 | chart count(call_id) as count over Agent by call_dir
 | fillnull Inbound, Outbound, Internal value=0</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>
         </search>
         <option name="charting.axisTitleY.text">No. of Calls</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Internal": #af575a, "Other": #cce34d}</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>All Call Distribution for Queue Agents</title>
+      <chart>
+        <search>
+          <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
+| dedup call_id, seq_order
+| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
+| eval src_display_name=if(isnull(src_display_name), "N/A", src_display_name)
+| eval dst_display_name=if(isnull(dst_display_name), "N/A", dst_display_name)
+| eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
+| eval agent=case(dst_type=0, dst_caller_number." - ".dst_display_name, src_type=0, src_caller_number." - ".src_display_name, 1==1, null())
+| stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by call_id
+| eval call_dir=if(isnull(call_dir), "Other", call_dir)
+| mvexpand Agent
+| search [| search `default_index` sourcetype="3cx:agent_logins" ($queues1$) | dedup ag_num | eval Agent="Ext.".ag_num." - ".ag_fname." ".ag_lname | fields Agent | table Agent]
+| chart count(call_id) as count over Agent by call_dir
+| fillnull Inbound, Outbound, Internal value=0</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
+        <option name="charting.axisTitleY.text">No. of Calls</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Internal": #af575a, "Other": #cce34d}</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Call Sequences on the Queue</title>
+      <input type="radio" token="tkn_only_internal_call_seq">
+        <label></label>
+        <choice value="| eval call_dir=mvfilter(!match(call_dir,&quot;Inbound&quot;)) | search call_dir=*">Exclude Inbound</choice>
+        <choice value="| eval call_dir=mvfilter(!match(call_dir,&quot;Outbound&quot;)) | search call_dir=*">Exclude Outbound</choice>
+        <choice value="| search call_dir=*">Do not Exclude Any</choice>
+      </input>
+      <chart>
+        <title>The purpose of the panel is identify how much calls are being transferred internally in the Queue.</title>
+        <search>
+          <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
+| dedup call_id, seq_order
+| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal", 1==1, "Other")
+| eval dst_display_name=if(isnull(dst_display_name), "N/A", dst_display_name)
+| eval src_display_name=if(isnull(src_display_name), "N/A", src_display_name)
+| eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
+| eval agent=case(dst_type=0, dst_caller_number." - ".dst_display_name, src_type=0, src_caller_number." - ".src_display_name, 1==1, null())
+| stats sum(has_queue) as has_queue, list(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by call_id
+| search $queues1$ | where has_queue&gt;0
+$tkn_only_internal_call_seq$
+| mvexpand call_dir
+| mvexpand Agent
+| search [| inputlookup florian_3cx_agents_logins.csv | search $queues1$ | fields Agent | table Agent]
+| chart count(call_id) as count over Agent by call_dir
+| fillnull Inbound, Outbound, Internal value=0</query>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
+        </search>
         <option name="charting.chart">column</option>
         <option name="charting.chart.stackMode">stacked</option>
         <option name="charting.drilldown">none</option>
