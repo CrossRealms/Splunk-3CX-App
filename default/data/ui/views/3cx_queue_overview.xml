@@ -186,7 +186,7 @@
   </row>
   <row>
     <panel>
-      <title>Queue Call Distribution for Queue Agents</title>
+      <title>Queue Calls Distribution for Queue Agents</title>
       <chart>
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
@@ -209,15 +209,18 @@
         <option name="charting.axisTitleY.text">No. of Calls</option>
         <option name="charting.chart">column</option>
         <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.drilldown">none</option>
+        <option name="charting.drilldown">all</option>
         <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Internal": #af575a, "Other": #cce34d}</option>
         <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">search?q=%60default_index%60%20sourcetype%3D%223cx%3Acall_report%22%20$hosts2$%20%0A%7C%20dedup%20call_id%2C%20seq_order%20%7C%20sort%200%20-call_id%2C%20%2B%20seq_order%0A%7C%20eval%20call_dir%20%3D%20case((dst_type%3D1%20OR%20dst_type%3D13)%2C%20%22Outbound%22%2C%20src_type%3D1%2C%20%22Inbound%22%2C%20(src_type%3D0%20AND%20dst_type%3D0)%2C%20%22Internal%22)%0A%7C%20eval%20src_display_name%3Dif(isnull(src_display_name)%2C%20%22N%2FA%22%2C%20src_display_name)%0A%7C%20eval%20dst_display_name%3Dif(isnull(dst_display_name)%2C%20%22N%2FA%22%2C%20dst_display_name)%0A%7C%20eval%20q_num%3Dcase(dst_type%3D4%2C%20dst_dn%2C%20src_type%3D4%2C%20src_dn)%0A%7C%20eval%20agent%3Dcase(dst_type%3D0%2C%20dst_caller_number.%22%20-%20%22.dst_display_name%2C%20src_type%3D0%2C%20src_caller_number.%22%20-%20%22.src_display_name%2C%201%3D%3D1%2C%20null())%0A%7C%20stats%20sum(has_queue)%20as%20has_queue%2C%20first(call_dir)%20as%20call_dir%2C%20values(q_num)%20as%20q_num%2C%20values(agent)%20as%20Agent%2C%20list(seq_order)%20as%20Sequence%2C%20list(start_time)%20as%20%22Start%20Time%22%2C%20list(end_time)%20as%20%22End%20Time%22%2C%20list(src_caller_number)%20as%20%22Source%20Number%22%2C%20list(src_display_name)%20as%20%22Source%20Name%22%2C%20list(dst_caller_number)%20as%20%22Dest.%20Number%22%2C%20list(dst_display_name)%20as%20%22Dest.%20Name%22%2C%20list(action)%20as%20%22Action%22%20by%20call_id%0A%7C%20search%20$queues1$%20%7C%20where%20has_queue%3E0%0A%7C%20eval%20call_dir%3Dif(isnull(call_dir)%2C%20%22Other%22%2C%20call_dir)%0A%7C%20search%20call_dir%3D$click.name2|s$%0A%7C%20mvexpand%20Agent%0A%7C%20search%20Agent%3D$click.value|s$%0A%7C%20fields%20-%20has_queue%2C%20q_num&amp;earliest=$time_overview.earliest$&amp;latest=$time_overview.latest$</link>
+        </drilldown>
       </chart>
     </panel>
   </row>
   <row>
     <panel>
-      <title>All Call Distribution for Queue Agents</title>
+      <title>All Calls Distribution for Queue Agents</title>
       <chart>
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
@@ -239,23 +242,27 @@
         <option name="charting.axisTitleY.text">No. of Calls</option>
         <option name="charting.chart">column</option>
         <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.drilldown">none</option>
+        <option name="charting.drilldown">all</option>
         <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Internal": #af575a, "Other": #cce34d}</option>
         <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">search?q=%60default_index%60%20sourcetype%3D%223cx%3Acall_report%22%20$hosts2$%20%0A%7C%20dedup%20call_id%2C%20seq_order%20%7C%20sort%200%20-call_id%2C%20%2B%20seq_order%0A%7C%20eval%20call_dir%20%3D%20case((dst_type%3D1%20OR%20dst_type%3D13)%2C%20%22Outbound%22%2C%20src_type%3D1%2C%20%22Inbound%22%2C%20(src_type%3D0%20AND%20dst_type%3D0)%2C%20%22Internal%22)%0A%7C%20eval%20src_display_name%3Dif(isnull(src_display_name)%2C%20%22N%2FA%22%2C%20src_display_name)%0A%7C%20eval%20dst_display_name%3Dif(isnull(dst_display_name)%2C%20%22N%2FA%22%2C%20dst_display_name)%0A%7C%20eval%20q_num%3Dcase(dst_type%3D4%2C%20dst_dn%2C%20src_type%3D4%2C%20src_dn)%0A%7C%20eval%20agent%3Dcase(dst_type%3D0%2C%20dst_caller_number.%22%20-%20%22.dst_display_name%2C%20src_type%3D0%2C%20src_caller_number.%22%20-%20%22.src_display_name%2C%201%3D%3D1%2C%20null())%0A%7C%20stats%20sum(has_queue)%20as%20has_queue%2C%20first(call_dir)%20as%20call_dir%2C%20values(q_num)%20as%20q_num%2C%20values(agent)%20as%20Agent%2C%20list(seq_order)%20as%20Sequence%2C%20list(start_time)%20as%20%22Start%20Time%22%2C%20list(end_time)%20as%20%22End%20Time%22%2C%20list(src_caller_number)%20as%20%22Source%20Number%22%2C%20list(src_display_name)%20as%20%22Source%20Name%22%2C%20list(dst_caller_number)%20as%20%22Dest.%20Number%22%2C%20list(dst_display_name)%20as%20%22Dest.%20Name%22%2C%20list(action)%20as%20%22Action%22%20by%20call_id%0A%7C%20eval%20call_dir%3Dif(isnull(call_dir)%2C%20%22Other%22%2C%20call_dir)%0A%7C%20search%20call_dir%3D$click.name2|s$%0A%7C%20mvexpand%20Agent%0A%7C%20search%20Agent%3D$click.value|s$%0A%7C%20fields%20-%20has_queue%2C%20q_num&amp;earliest=$time_overview.earliest$&amp;latest=$time_overview.latest$</link>
+        </drilldown>
       </chart>
     </panel>
   </row>
   <row>
     <panel>
-      <title>Call Sequences on the Queue</title>
+      <title>Call Sequences on the Queue Calls</title>
       <input type="radio" token="tkn_only_internal_call_seq">
         <label></label>
         <choice value="| eval call_dir=mvfilter(!match(call_dir,&quot;Inbound&quot;)) | search call_dir=*">Exclude Inbound</choice>
         <choice value="| eval call_dir=mvfilter(!match(call_dir,&quot;Outbound&quot;)) | search call_dir=*">Exclude Outbound</choice>
         <choice value="| search call_dir=*">Do not Exclude Any</choice>
+        <default>| eval call_dir=mvfilter(!match(call_dir,"Inbound")) | search call_dir=*</default>
       </input>
       <chart>
-        <title>The purpose of the panel is identify how much calls are being transferred internally in the Queue.</title>
+        <title>The purpose of the chart is identify how much calls are being transferred internally in the Queue for auditing.</title>
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
 | dedup call_id, seq_order
@@ -277,9 +284,12 @@ $tkn_only_internal_call_seq$
         </search>
         <option name="charting.chart">column</option>
         <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.drilldown">none</option>
+        <option name="charting.drilldown">all</option>
         <option name="charting.fieldColors">{"Inbound":#4fa483, "Outbound":#ec9860, "Internal": #af575a, "Other": #cce34d}</option>
         <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">search?q=%60default_index%60%20sourcetype%3D%223cx%3Acall_report%22%20$hosts2$%20%0D%0A%7C%20dedup%20call_id%2C%20seq_order%0D%0A%7C%20eval%20call_dir%20%3D%20case((dst_type%3D1%20OR%20dst_type%3D13)%2C%20%22Outbound%22%2C%20src_type%3D1%2C%20%22Inbound%22%2C%20(src_type%3D0%20AND%20dst_type%3D0)%2C%20%22Internal%22%2C%201%3D%3D1%2C%20%22Other%22)%0D%0A%7C%20eval%20dst_display_name%3Dif(isnull(dst_display_name)%2C%20%22N%2FA%22%2C%20dst_display_name)%0D%0A%7C%20eval%20src_display_name%3Dif(isnull(src_display_name)%2C%20%22N%2FA%22%2C%20src_display_name)%0D%0A%7C%20eval%20q_num%3Dcase(dst_type%3D4%2C%20dst_dn%2C%20src_type%3D4%2C%20src_dn)%0D%0A%7C%20eval%20agent%3Dcase(dst_type%3D0%2C%20dst_caller_number.%22%20-%20%22.dst_display_name%2C%20src_type%3D0%2C%20src_caller_number.%22%20-%20%22.src_display_name%2C%201%3D%3D1%2C%20null())%0D%0A%7C%20eval%20tmp%3Dmvzip(seq_order%2C%20mvzip(call_dir%2C%20mvzip(start_time%2C%20mvzip(end_time%2C%20mvzip(src_type%2C%20mvzip(src_caller_number%2C%20mvzip(src_display_name%2C%20mvzip(dst_type%2C%20mvzip(dst_caller_number%2C%20mvzip(dst_display_name%2C%20action%2C%20%22%7C%22)%2C%20%22%7C%22)%2C%20%22%7C%22)%2C%20%22%7C%22)%2C%20%22%7C%22)%2C%20%22%7C%22)%2C%20%22%7C%22)%2C%20%22%7C%22)%2C%20%22%7C%22)%2C%20%22%7C%22)%0D%0A%7C%20stats%20sum(has_queue)%20as%20has_queue%2C%20values(q_num)%20as%20q_num%2C%20values(agent)%20as%20Agent%2C%20list(tmp)%20as%20tmp%20by%20call_id%0D%0A%7C%20search%20$queues1$%20%7C%20where%20has_queue%3E0%0D%0A%7C%20search%20Agent%3D$click.value|s$%0D%0A%7C%20mvexpand%20tmp%0D%0A%7C%20rex%20field%3Dtmp%20%22(%3F%3Cseq_order%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Ccall_dir%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Cstart_time%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Cend_time%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Csrc_type%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Csrc_caller_number%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Csrc_display_name%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Cdst_type%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Cdst_caller_number%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Cdst_display_name%3E%5B%5E%5C%7C%5D%2B)%5C%7C(%3F%3Caction%3E%5B%5E%5C%7C%5D%2B)%22%0D%0A%7C%20search%20call_dir%3D$click.name2|s$%0D%0A%7C%20eval%20Agent%3D$click.value|s$%0D%0A%7C%20table%20call_id%2C%20seq_order%2C%20Agent%2C%20call_dir%2C%20start_time%2C%20end_time%2C%20src_type%2C%20src_caller_number%2C%20src_display_name%2C%20dst_type%2C%20dst_caller_number%2C%20dst_display_name%2C%20action%0D%0A%7C%20sort%200%20-call_id%2C%20%2B%20seq_order&amp;earliest=$time_overview.earliest$&amp;latest=$time_overview.latest$</link>
+        </drilldown>
       </chart>
     </panel>
   </row>
