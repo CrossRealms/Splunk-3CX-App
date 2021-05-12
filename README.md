@@ -106,14 +106,15 @@ KNOWN LIMITATION
 RELEASE NOTES
 -------------
 Version 1.2.0
+* Overview Dashboard:
+  * Fixed a visualization issue with the Daily Call Expectancy vs Agent Logins dashboard panel.
 * Queue Summary Dashboard:
-  * Added breakdown for Inbound, Outbound and Internal calls for the Queue Summary page's Daily Call Expectancy vs Agent Logins chart.
-  * Added bar chart for Call Distribution for Agents for Queue Calls and All Calls.
-  * Added bar chart for Call Sequences on the Queue for auditing call transfers in the Queue.
+  * Added breakdown for Inbound, Outbound and Internal calls for the Daily Call Expectancy vs Agent Logins chart.
+  * Added a bar chart to the Queue Calls Distribution for Queue Agents and All Calls Distribution for Queue Agents dashboard panels.
+  * Added a bar chart to the Call Sequences on the Queue Calls dashboard panel.
 * Call Logs Dashboard:
-  * Fixed the logic for call direction for call_reports logs.
-  * Fixed the issue with missing call sequences and calls.
-* Fixed the issue with the Daily Call Expectancy vs Agent Logins chart of the Overview page.
+  * Fixed the call direction logic for call_reports logs.
+  * Fixed an issue with missing call sequences and calls.
 
 
 Version 1.1.0

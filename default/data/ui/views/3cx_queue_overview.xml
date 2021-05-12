@@ -1,6 +1,6 @@
 <form>
   <label>Queue Summary</label>
-  <description>View general queue statistics over a duration of time. The default time period is set to: Week to date</description>
+  <description>View general queue statistics over a period of time.</description>
   <fieldset submitButton="false">
     <input type="multiselect" token="hosts2" searchWhenChanged="true">
       <label>Office Name</label>
@@ -264,7 +264,7 @@
         <default>| eval call_dir=mvfilter(!match(call_dir,"Inbound")) | search call_dir=*</default>
       </input>
       <chart>
-        <title>The purpose of the chart is identify how much calls are being transferred internally in the Queue for auditing.</title>
+        <title>The purpose of the chart is identify how often calls are being transferred internally in the Queue for auditing.</title>
         <search>
           <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
 | dedup call_id, seq_order

@@ -1,6 +1,6 @@
 <form>
   <label>Overview</label>
-  <description>Includes statistics both Queue and Non-Queue Calls</description>
+  <description>Includes statistics for both queue and non-queue calls</description>
   <fieldset submitButton="false"></fieldset>
   <row>
     <panel>
