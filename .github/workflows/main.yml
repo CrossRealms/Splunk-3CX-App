@@ -55,12 +55,12 @@ jobs:
       
       - uses: splunk/appinspect-cli-action@v1
         with:
-          app_path: 'repodir/splunk_app_3cx.tgz'
-          result_file: 'repodir/app-appinspect-mode-test.json'
+          app_path: 'splunk_app_3cx.tgz'
+          result_file: 'app-appinspect-mode-test.json'
 
       - uses: actions/upload-artifact@v2
         if: always()
         with:
           name: "app_inspect_reports"
           path: |
-            repodir/app-appinspect-mode-test.json
+            app-appinspect-mode-test.json
