@@ -1,45 +1,49 @@
 ﻿# Template for db_inputs.conf file for DB Connect App, to collect data for 3CX App
+
+###########################################################################
+## <provide host-name for 3CX> -> Replace with 3CX host name
+##
+## Also update the date and time for tail_rising_column_init_ckpt_value parameter in all the inputs based on how long in the past you want to backfill the data.
+##  * Please use `YY-mm-dd HH:MM:SS.000` date-time format.
+##  * Example: `tail_rising_column_init_ckpt_value = {"value":"2021-09-21 00:00:00.000","columnType":93}`
+##  * Please do not go long in the past as all queries will timed-out and you will never be able to collect the data.
+###########################################################################
+
+
 [default]
 host = <provide host-name for 3CX>
 
-[calls_view]
+
+[3cx_calls]
 connection = 3CX
 disabled = 0
-index = 3cx
+index = 3cxtest
 index_time_mode = dbColumn
-input_timestamp_column_number = 2
-interval = 0,30 * * * *
-mode = batch
-query = SELECT calls.id, calls.start_time, calls.end_time, calls.is_answered, calls.ringing_dur, calls.talking_dur, calls.q_wait_dur, CASE WHEN partinfo.caller_number LIKE 'Ext%%' THEN 'Outbound' ELSE 'Inbound' END AS InOut \
-FROM cl_calls as calls INNER JOIN \
-(SELECT calls.id, Min(segs.id) AS segID FROM cl_calls as calls INNER JOIN cl_segments as segs ON calls.id = segs.call_id GROUP BY calls.id) \
-AS Callss ON calls.id = Callss.id INNER JOIN \
-cl_segments as segs ON segs.id = callss.segID JOIN cl_party_info as partinfo ON partinfo.id = segs.call_id WHERE calls.start_time > now() - interval '30 minutes'
-sourcetype = 3cx:calls_view
+input_timestamp_column_number = 9
+# input_timestamp_column_name = seg_start_time
+interval = */15 * * * *
+mode = rising
+tail_rising_column_name = seg_end_time
+tail_rising_column_init_ckpt_value = {"value":"YY-mm-dd HH:MM:SS.000","columnType":93}
+query = SELECT calls.id AS call_id, calls.start_time as call_start_time, calls.end_time as call_end_time, calls.is_answered as call_is_answered, calls.ringing_dur as call_ringing_dur, calls.talking_dur as call_talking_dur, calls.q_wait_dur as call_q_wait_dur, \
+segments.id as seg_id, segments.start_time as seg_start_time, segments.end_time as seg_end_time, segments.seq_group as seg_group, segments.seq_order as seg_order, segments.type as seg_type, segments.action_id as seg_action_id, segments.action_party_id as seg_action_party_id, \
+src_participants.role as src_role, src_participants.is_inbound as src_is_inbound, src_participants.end_status as src_end_status, src_participants.forward_reason as src_forward_reason, src_participants.failure_reason as src_failure_reason, src_participants.answer_time as answer_time, src_participants.recording_url as src_recording_url, \
+src_info.dn_type as src_type, src_info.dn as src_dn, src_info.caller_number as src_caller_number, src_info.display_name as src_display_name, \
+dst_participants.role as dst_role, dst_participants.is_inbound as dst_is_inbound, dst_participants.end_status as dst_end_status, dst_participants.forward_reason as dst_forward_reason, dst_participants.failure_reason as dst_failure_reason, dst_participants.recording_url as dst_recording_url, \
+dst_info.dn_type as dst_type, dst_info.dn as dst_dn, dst_info.caller_number as dst_caller_number, dst_info.display_name as dst_display_name, \
+act_participants.role as act_role, act_participants.is_inbound as act_is_inbound, act_participants.end_status as act_end_status, act_participants.forward_reason as act_forward_reason, act_participants.failure_reason as act_failure_reason, \
+act_info.dn_type as act_type, act_info.dn as act_dn, act_info.caller_number as act_caller_number, act_info.display_name as act_display_name \
+FROM cl_calls as calls JOIN cl_segments as segments ON calls.id = segments.call_id AND segments.end_time>=? \
+JOIN cl_participants as src_participants ON segments.src_part_id = src_participants.id \
+JOIN cl_participants as dst_participants ON segments.dst_part_id = dst_participants.id \
+JOIN cl_party_info as src_info ON src_participants.info_id = src_info.id \
+JOIN cl_party_info as dst_info ON dst_participants.info_id = dst_info.id  \
+LEFT OUTER JOIN cl_participants as act_participants ON segments.action_party_id = act_participants.id \
+LEFT OUTER JOIN cl_party_info as act_info ON act_participants.info_id = act_info.id \
+ORDER BY seg_end_time ASC
+sourcetype = 3cx:calls
 
 
-[call_report]
-connection = 3CX
-disabled = 0
-index = 3cx
-index_time_mode = dbColumn
-input_timestamp_column_number = 4
-interval = 0,30 * * * *
-mode = batch
-query = SELECT calls.id as call_id, calls.start_time as call_start_time, calls.end_time as call_end_time, segments.start_time as start_time, segments.end_time as end_time, segments.seq_group, segments.seq_order, segments.type as seg_type, src_info.dn_type as src_type, src_info.dn as src_dn, src_info.caller_number as src_caller_number, src_info.display_name as src_display_name, dst_info.dn_type as dst_type, dst_info.dn as dst_dn, dst_info.caller_number as dst_caller_number, dst_info.display_name as dst_display_name, segments.action_id as action, act_info.dn_type as act_dn_type, act_info.dn as act_dn, act_info.caller_number as act_caller_number, act_info.display_name as act_display_name, CASE WHEN src_info.dn_type = 4 OR dst_info.dn_type = 4 OR act_info.dn_type = 4 THEN 1 ELSE 0 END as has_queue, dst_participants.recording_url as recording_url FROM cl_calls as calls JOIN cl_segments as segments ON calls.id = segments.call_id JOIN cl_participants as src_participants ON segments.src_part_id =  src_participants.id JOIN cl_participants as dst_participants ON segments.dst_part_id =  dst_participants.id JOIN cl_party_info as src_info ON src_participants.info_id = src_info.id JOIN cl_party_info as dst_info ON dst_participants.info_id = dst_info.id LEFT OUTER JOIN (cl_participants as act_participants join cl_party_info as act_info on act_info.id = act_participants.info_id) on act_participants.id = segments.action_party_id WHERE calls.start_time > now() - interval '30 minutes'
-sourcetype = 3cx:call_report
-tail_rising_column_init_ckpt_value = {"value":null,"columnType":null}
-
-[cl_party_info]
-connection = 3CX
-disabled = 0
-index = 3cx
-index_time_mode = current
-interval = 0,30 * * * *
-mode = batch
-query = select cl_party_info.* from cl_party_info JOIN cl_participants as parts ON parts.info_id = cl_party_info.id JOIN cl_segments ON parts.id = cl_segments.src_part_id WHERE cl_segments.start_time - INTERVAL '5 hours' > now() - interval '1 day' UNION select cl_party_info.* from cl_party_info JOIN cl_participants as parts ON parts.info_id = cl_party_info.id JOIN cl_segments ON parts.id = cl_segments.dst_part_id WHERE cl_segments.start_time > now() - interval '30 minutes'
-sourcetype = 3cx:cl_party_info
-tail_rising_column_init_ckpt_value = {"value":null,"columnType":null}
 
 [agent_login_export]
 connection = 3CX

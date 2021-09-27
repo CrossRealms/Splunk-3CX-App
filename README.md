@@ -58,8 +58,8 @@ For data collection we need to setup Splunk DB Connect on Heavy Forwarder.
   * username: phonesystem
   * Password needs to be fetched from the 3CX ini file.</br>
   Location of the file in various platform is as below.</br></br>
-  For Windows : C:\Program Files\3CX Phone System\Bin\3CXPhoneSystem.ini</br>
-  For Linux: /var/lib/3cxpbx/Bin/3CXPhoneSystem.ini
+  For Windows : `C:\Program Files\3CX Phone System\Bin\3CXPhoneSystem.ini`</br>
+  For Linux: `/var/lib/3cxpbx/Bin/3CXPhoneSystem.ini`
   * From this file look for the stanza name `DbAdminREADONLY`. Fetch the password from the stanza and fill it in the password field of Identity Wizard.
 * After Creating Identity Create DB Connections with 3CX PostgresQL.
 * In Splunk DB Connect, click the Configuration > Databases > Connections tab.
@@ -67,16 +67,20 @@ For data collection we need to setup Splunk DB Connect on Heavy Forwarder.
 * On the New Connection page, complete the following fields:
   * Connection Name: 3CX
   * Identity: Choose the identity 3CX Created in first step.
-  * Connection Type: Postgress
+  * Connection Type: Postgres
   * Timezone: Select Timezone if required.
   * Host: Host of 3CX
-  * Port: Port of postgress database from 3CX system. (Defaults to 5480)
+  * Port: Port of postgres database from 3CX system. (Defaults to 5480 or try 5432)
   * Default Database: database_single (Default database for 3CX system)
   * Click on Save.
 
 * Download the Splunk App For 3CX and extract the archive. 
 * From `default` directory of this App, copy the `db_inputs.conf.template` file to $SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_inputs.conf
 * Open the file in editor, in the `default` stanza replace the host value with the hostname you want to add for your forwarder.
+* Also update the date and time for tail_rising_column_init_ckpt_value parameter in all the inputs based on how long in the past you want to backfill the data.
+  * Please use `YY-mm-dd HH:MM:SS.000` date-time format.
+  * Example: `tail_rising_column_init_ckpt_value = {"value":"2021-09-21 00:00:00.000","columnType":93}`
+  * Please do not go long in the past as all queries will timed-out and you will never be able to collect the data.
 * Restart the Splunk.
 
 
@@ -105,6 +109,27 @@ KNOWN LIMITATION
 
 RELEASE NOTES
 -------------
+Version 2.0.0
+* Removed following inputs from the db_inputs.conf.template file.
+  * calls_view, call_report, cl_party_info
+* Added below new inputs in the db_inputs.conf.template file.
+  * 3cx_calls
+* Database SQL queries for data collection are enhanced for performance.
+* All dashboards updated based on the new data.
+  * Issue resolved: Calls missing in Splunk
+* Call Logs Dashboard:
+  * Added a lot more important fields to look at for more insights.
+
+
+Upgrade guide from 1.2.x to 2.0.0
+* Remove following inputs from Splunk DB Connect App.
+  * calls_view, call_report, cl_party_info
+* Create following new inputs directly from db_inputs.conf file.
+  * 3cx_calls
+  * Take reference from db_inputs.conf.template file. Follow the `CONFIGURATION` > `Data Collection` guide.
+  * Please make sure to update the host name value and checkpoint values for all the data inputs as per the guidance in db_inputs.conf.template file.
+
+
 Version 1.2.1
 * Minor Changes
   * Changes to make compatible with Splunk AppInspect
