@@ -1,7 +1,26 @@
 <form version="1.1">
   <label>Queue Summary</label>
   <description>View general queue statistics over a period of time.</description>
+  <search id="all_call_base_search">
+    <query>
+      `default_index` sourcetype="3cx:calls"
+| dedup host, call_id, seg_order
+| eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
+| eval agent1=if(dst_type=0, dst_caller_number." - ".dst_display_name, "N/A"), agent2=if(src_type=0, src_caller_number." - ".src_display_name, "N/A"), agent=mvappend(agent1, agent2)
+| sort 0 -call_id, + seg_order
+| stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by host, call_id
+    </query>
+    <earliest>$time_overview.earliest$</earliest>
+    <latest>$time_overview.latest$</latest>
+  </search>
   <fieldset submitButton="false">
+    <input type="time" token="time_overview">
+      <label>Time</label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
     <input type="multiselect" token="hosts2" searchWhenChanged="true">
       <label>Office Name</label>
       <choice value="*">All</choice>
@@ -20,8 +39,8 @@
 | dedup officeNames
 | table host, officeNames
 | sort + host</query>
-        <earliest>0</earliest>
-        <latest></latest>
+        <earliest>$time_overview.earliest$</earliest>
+        <latest>$time_overview.latest$</latest>
       </search>
     </input>
     <input type="multiselect" token="queues1" searchWhenChanged="true">
@@ -35,9 +54,9 @@
       <fieldForLabel>fqname</fieldForLabel>
       <fieldForValue>q_num</fieldForValue>
       <search>
-        <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ | eval fqname = q_name+" ("+q_num+")" | dedup q_num | table q_num,fqname | sort + q_name</query>
-        <earliest>0</earliest>
-        <latest></latest>
+        <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ | dedup q_num | eval fqname = q_name+" ("+q_num+")" | sort + q_name</query>
+        <earliest>$time_overview.earliest$</earliest>
+        <latest>$time_overview.latest$</latest>
       </search>
       <valueSuffix>"</valueSuffix>
     </input>
@@ -46,22 +65,15 @@
       <default>30</default>
       <initialValue>30</initialValue>
     </input>
-    <input type="time" token="time_overview">
-      <label>Time</label>
-      <default>
-        <earliest>-7d@h</earliest>
-        <latest>now</latest>
-      </default>
-    </input>
   </fieldset>
   <row>
     <panel>
       <title>Queue Calls</title>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
-| dedup idcallcent_queuecalls
-| stats count(idcallcent_queuecalls)</query>
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$ 
+| dedup host, queuecall_id
+| stats count</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>
         </search>
@@ -71,8 +83,8 @@
       </single>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
-| dedup idcallcent_queuecalls
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$ 
+| dedup host, queuecall_id
 | where isnotnull(q_num) AND (isnull(reason_noanswerdesc) OR reason_noanswerdesc="") AND reason_failcode=0
 | stats count</query>
           <earliest>$time_overview.earliest$</earliest>
@@ -84,8 +96,8 @@
       </single>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
-| dedup idcallcent_queuecalls
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$ 
+| dedup host, queuecall_id
 | where isnotnull(q_num) AND reason_noanswerdesc!="" 
 | stats count</query>
           <earliest>$time_overview.earliest$</earliest>
@@ -97,8 +109,8 @@
       </single>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
-| dedup idcallcent_queuecalls
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$ 
+| dedup host, queuecall_id
 | where isnotnull(q_num) AND (isnull(reason_noanswerdesc) OR reason_noanswerdesc="") AND reason_failcode != 0
 | stats count</query>
           <earliest>$time_overview.earliest$</earliest>
@@ -115,8 +127,8 @@
       <title>Number of Calls Received</title>
       <chart>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
-| dedup idcallcent_queuecalls
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$ 
+| dedup host, queuecall_id
 | timechart span=1d count BY q_name
 | rename q_name as Queue, count as "Total Calls"</query>
           <earliest>$time_overview.earliest$</earliest>
@@ -149,16 +161,10 @@
       </input>
       <chart>
         <title>Hourly Heat Map</title>
-        <search>
-          <query>`default_index` sourcetype="3cx:call_report" $hosts2$
-| dedup call_id, seq_order
-| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
-| eval call_start_time = strptime(call_start_time,"%Y-%m-%d %H:%M:%S")
-| eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
-| stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num by call_id, call_start_time
+        <search base="all_call_base_search">
+          <query>| search $hosts2$
 | search $queues1$ | where has_queue&gt;0
 | eval call_dir=if(isnull(call_dir), "Other", call_dir)
-| rename call_start_time as _time
 | timechart span=1h count by call_dir
 | eval Hour=strftime(_time,"%H") 
 | stats $tkn_aggregation$(*) as * by Hour
@@ -172,8 +178,6 @@
 | stats first(*) as * by Hour
 | fillnull Agents_LoggedIn, Inbound, Outbound, Internal value=0
 | eval Agents_LoggedIn=if($tkn_aggregation|s$="avg", round(Agents_LoggedIn, 1), Agents_LoggedIn), Inbound=if($tkn_aggregation|s$="avg", round(Inbound, 1), Inbound), Outbound=if($tkn_aggregation|s$="avg", round(Outbound, 1), Outbound), Internal=if($tkn_aggregation|s$="avg", round(Internal, 1), Internal), Other=if($tkn_aggregation|s$="avg", round(Other, 1), Other)</query>
-          <earliest>$time_overview.earliest$</earliest>
-          <latest>$time_overview.latest$</latest>
         </search>
         <option name="charting.chart">column</option>
         <option name="charting.chart.overlayFields">Agents_LoggedIn</option>
@@ -188,15 +192,8 @@
     <panel>
       <title>Queue Calls Distribution for Queue Agents</title>
       <chart>
-        <search>
-          <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
-| dedup call_id, seq_order
-| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
-| eval src_display_name=if(isnull(src_display_name), "N/A", src_display_name)
-| eval dst_display_name=if(isnull(dst_display_name), "N/A", dst_display_name)
-| eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
-| eval agent1=if(dst_type=0, dst_caller_number." - ".dst_display_name, "N/A"), agent2=if(src_type=0, src_caller_number." - ".src_display_name, "N/A"), agent=mvappend(agent1, agent2)
-| stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by call_id
+        <search base="all_call_base_search">
+          <query>| search $hosts2$ 
 | search $queues1$ | where has_queue&gt;0
 | eval call_dir=if(isnull(call_dir), "Other", call_dir)
 | eval Agent=mvfilter(!match(Agent,"N/A"))
@@ -204,8 +201,6 @@
 | search [| search `default_index` sourcetype="3cx:agent_logins" ($queues1$) | dedup ag_num | eval Agent="Ext.".ag_num." - ".ag_fname." ".ag_lname | fields Agent | table Agent]
 | chart count(call_id) as count over Agent by call_dir
 | fillnull Inbound, Outbound, Internal value=0</query>
-          <earliest>$time_overview.earliest$</earliest>
-          <latest>$time_overview.latest$</latest>
         </search>
         <option name="charting.axisTitleY.text">No. of Calls</option>
         <option name="charting.chart">column</option>
@@ -223,23 +218,14 @@
     <panel>
       <title>All Calls Distribution for Queue Agents</title>
       <chart>
-        <search>
-          <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
-| dedup call_id, seq_order
-| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
-| eval src_display_name=if(isnull(src_display_name), "N/A", src_display_name)
-| eval dst_display_name=if(isnull(dst_display_name), "N/A", dst_display_name)
-| eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
-| eval agent1=if(dst_type=0, dst_caller_number." - ".dst_display_name, "N/A"), agent2=if(src_type=0, src_caller_number." - ".src_display_name, "N/A"), agent=mvappend(agent1, agent2)
-| stats sum(has_queue) as has_queue, first(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by call_id
+        <search base="all_call_base_search">
+          <query>| search $hosts2$ 
 | eval call_dir=if(isnull(call_dir), "Other", call_dir)
 | eval Agent=mvfilter(!match(Agent,"N/A"))
 | mvexpand Agent
 | search [| search `default_index` sourcetype="3cx:agent_logins" ($queues1$) | dedup ag_num | eval Agent="Ext.".ag_num." - ".ag_fname." ".ag_lname | fields Agent | table Agent]
 | chart count(call_id) as count over Agent by call_dir
 | fillnull Inbound, Outbound, Internal value=0</query>
-          <earliest>$time_overview.earliest$</earliest>
-          <latest>$time_overview.latest$</latest>
         </search>
         <option name="charting.axisTitleY.text">No. of Calls</option>
         <option name="charting.chart">column</option>
@@ -265,15 +251,8 @@
       </input>
       <chart>
         <title>The purpose of the chart is identify how often calls are being transferred internally in the Queue for auditing.</title>
-        <search>
-          <query>`default_index` sourcetype="3cx:call_report" $hosts2$ 
-| dedup call_id, seq_order
-| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal", 1==1, "Other")
-| eval dst_display_name=if(isnull(dst_display_name), "N/A", dst_display_name)
-| eval src_display_name=if(isnull(src_display_name), "N/A", src_display_name)
-| eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
-| eval agent1=if(dst_type=0, dst_caller_number." - ".dst_display_name, "N/A"), agent2=if(src_type=0, src_caller_number." - ".src_display_name, "N/A"), agent=mvappend(agent1, agent2)
-| stats sum(has_queue) as has_queue, list(call_dir) as call_dir, values(q_num) as q_num, values(agent) as Agent by call_id
+        <search base="all_call_base_search">
+          <query>| search $hosts2$ 
 | search $queues1$ | where has_queue&gt;0
 $tkn_only_internal_call_seq$
 | mvexpand call_dir
@@ -282,8 +261,6 @@ $tkn_only_internal_call_seq$
 | search [| search `default_index` sourcetype="3cx:agent_logins" ($queues1$) | dedup ag_num | eval Agent="Ext.".ag_num." - ".ag_fname." ".ag_lname | fields Agent | table Agent]
 | chart count(call_id) as count over Agent by call_dir
 | fillnull Inbound, Outbound, Internal value=0</query>
-          <earliest>$time_overview.earliest$</earliest>
-          <latest>$time_overview.latest$</latest>
         </search>
         <option name="charting.chart">column</option>
         <option name="charting.chart.stackMode">stacked</option>
@@ -299,30 +276,16 @@ $tkn_only_internal_call_seq$
   <row>
     <panel>
       <title>Daily % Calls Answered by Queue</title>
-      <input type="time" token="tframe1" searchWhenChanged="true">
-        <label>Time Frame</label>
-        <default>
-          <earliest>-1d@d</earliest>
-          <latest>@d</latest>
-        </default>
-      </input>
       <table>
         <title>Calls</title>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$
 | eval Queue = q_num+" - "+q_name
 | eval Ab = if(isserviced="0", 1, 0)
 | eval Ans = if(isserviced="1", 1, 0)
 | eval SlaP = if(tot_ringing_sec&lt;=$slatime$,1,0)
-| stats count as Total, 
-sum(Ab) as Abandoned, 
-sum(Ans) as Answered,
-sum(tot_servicing_sec) as TotTalk,
-avg(tot_servicing_sec) as AvgTalk,
-sum(tot_ringing_sec) as TotRing,
-avg(tot_ringing_sec) as AvgRing,
-sum(SlaP) as SlaPc by Queue
-| eval TotC = [search sourcetype="3cx:queuecalls_view" | stats count as TotalC | return $TotalC ]
+| stats count as Total, sum(Ab) as Abandoned, sum(Ans) as Answered, sum(ts_servicing_sec) as TotTalk, avg(ts_servicing_sec) as AvgTalk, sum(tot_ringing_sec) as TotRing, avg(tot_ringing_sec) as AvgRing, sum(SlaP) as SlaPc by Queue
+| eventstats sum(Total) as TotC
 | eval PctOfCalls = round((Total/TotC)*100,2) . " %"
 | eval PctOfSLA = round((SlaPc/Total)*100,2) . " %"
 | eval SvPct = round(Answered*100/Total,1) . " %"
@@ -337,8 +300,8 @@ sum(SlaP) as SlaPc by Queue
 | table Queue, Total, Abandoned, Answered, PctOfCalls, SvPct, PctOfSLA, TRing, ARing, TTalk, ATalk
 | rename Total as "Total Calls", SvPct as "% of Calls Serviced", PctOfSLA as "SLA Met %", TRing AS "Ring Time Total", ARing as "Mean Ring Time", TTalk AS "Talk Time Total", ATalk as "Mean Talk Time", PctOfCalls as "% of Calls Total"
 | sort + q_num</query>
-          <earliest>$tframe1.earliest$</earliest>
-          <latest>$tframe1.latest$</latest>
+          <earliest>$time_overview.earliest$</earliest>
+          <latest>$time_overview.latest$</latest>
         </search>
         <option name="drilldown">none</option>
         <option name="refresh.display">progressbar</option>
@@ -359,8 +322,8 @@ sum(SlaP) as SlaPc by Queue
       </input>
       <chart>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
-| dedup idcallcent_queuecalls
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$ 
+| dedup host, queuecall_id
 | timechart span=1d avg($savgs$) BY q_name
 | rename q_name as Queue</query>
           <earliest>$time_overview.earliest$</earliest>
@@ -379,8 +342,8 @@ sum(SlaP) as SlaPc by Queue
       <title>SLA Rate</title>
       <chart>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
-| dedup idcallcent_queuecalls
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$ 
+| dedup host, queuecall_id
 | eval SLTime = if(tot_ringing_sec&lt;=$slatime$,"SLA Met","SLA Breached")
 | chart count AS QCalls by q_name, SLTime span=1d
 | rename q_name as Queue</query>
@@ -402,8 +365,8 @@ sum(SlaP) as SlaPc by Queue
       <title>Failed Call Description(s)</title>
       <chart>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$ 
-| dedup idcallcent_queuecalls
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$ 
+| dedup host, queuecall_id
 | where reason_failcode != 0
 | rename q_name AS "Queue #"
 | chart count(time_start) AS "Abandoned # of Calls" by "Queue #" reason_faildesc</query>
@@ -424,14 +387,11 @@ sum(SlaP) as SlaPc by Queue
       <title>Unanswered Call Description(s)</title>
       <chart>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts2$ $queues1$
-| dedup idcallcent_queuecalls
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ $queues1$
+| dedup host, queuecall_id
 | where reason_noanswercode != 0
 | rename q_name AS "Queue #"
-| eval reason_noanswerdesc=case((reason_noanswerdesc="MaxWaitTime"), "Max Wait Time",
-                    (reason_noanswerdesc="NoAgents"), "No Agents Signed In",
-                    (reason_noanswerdesc="UserRequested"), "User Requested Callback",
-                        true(), "IMPOSSIBLE!")
+| eval reason_noanswerdesc=case((reason_noanswerdesc="MaxWaitTime"), "Max Wait Time", (reason_noanswerdesc="NoAgents"), "No Agents Signed In", (reason_noanswerdesc="UserRequested"), "User Requested Callback", true(), "IMPOSSIBLE!")
 | chart count(time_start) AS "Abandoned # of Calls" by "Queue #" reason_noanswerdesc</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>

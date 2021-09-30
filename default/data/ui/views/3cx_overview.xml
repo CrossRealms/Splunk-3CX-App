@@ -175,11 +175,9 @@
       <chart>
         <title>Calls Distribution for Each Queue</title>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts1$
-| dedup idcallcent_queuecalls
-| eval SLTime = q_name
-| eval ct = "Calls"
-| chart count AS QCalls by ct, SLTime</query>
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts1$
+| dedup host, queuecall_id
+| chart count AS QCalls by host, q_name</query>
           <earliest>$tOverview.earliest$</earliest>
           <latest>$tOverview.latest$</latest>
         </search>
@@ -197,14 +195,15 @@
       <chart>
         <title>SLA Breaches for each Queue</title>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts1$
-| dedup idcallcent_queuecalls
-| eval breaches = if(tot_ringing_sec&gt;$slatime$,1,0)
-| stats sum(breaches) as "SLA Breaches" by q_name</query>
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts1$
+| dedup host, queuecall_id
+| eval breaches = if(tot_ringing_sec&gt;30,1,0)
+| chart sum(breaches) as "SLA Breaches" by host, q_name</query>
           <earliest>$tOverview.earliest$</earliest>
           <latest>$tOverview.latest$</latest>
         </search>
         <option name="charting.chart">bar</option>
+        <option name="charting.chart.stackMode">stacked</option>
         <option name="charting.drilldown">none</option>
         <option name="refresh.display">progressbar</option>
       </chart>

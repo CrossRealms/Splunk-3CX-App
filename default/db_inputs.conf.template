@@ -78,13 +78,36 @@ SELECT o.q_num, o.ag_num, o.firstname AS ag_fname, o.lastname AS ag_lname, i.tim
 FROM rowsOut o JOIN rowsIn i ON i.rn = o.in_row AND i.ag_num = o.ag_num AND o.q_num = i.q_num WHERE i.timeofupdate AT TIME ZONE 'UTC' > now() - interval '30 minutes'
 sourcetype = 3cx:agent_logins
 
-[queuecalls_view]
+
+
+[3cx_queuecalls]
 connection = 3CX
 disabled = 0
-index = 3cx
+index = 3cxtest
 index_time_mode = dbColumn
-input_timestamp_column_number = 5
-interval = 0,30 * * * *
-mode = batch
-query = SELECT idcallcent_queuecalls,q.name AS q_name, q_num, dn.value, time_start AT TIME ZONE 'UTC' AS time_start, time_end AT TIME ZONE 'UTC' AS time_end, ts_waiting, ts_polling, ts_servicing, ts_locating, count_polls, count_dialed, count_rejected, count_dials_timed, reason_noanswercode, reason_noanswerdesc, reason_failcode, reason_faildesc, call_history_id, q_cal, from_userpart, from_displayname, to_dialednum, to_dn, urs.firstname AS ag_fname, urs.lastname AS ag_lname, to_dntype, cb_num, call_result, deal_status, is_visible, date_part('second', ts_waiting) + date_part('minute',ts_waiting)*60 + date_part('hour', ts_waiting)*3600 AS tot_waiting_sec,date_part('second', ts_polling) + date_part('minute',ts_polling)*60 + date_part('hour', ts_polling)*3600 AS tot_polling_sec,date_part('second', ts_servicing) + date_part('minute',ts_servicing)*60 + date_part('hour', ts_servicing)*3600 AS tot_servicing_sec,date_part('second', ts_locating) + date_part('minute',ts_locating)*60 + date_part('hour', ts_locating)*3600 AS tot_locating_sec,date_part('second', ts_waiting) + date_part('minute',ts_waiting)*60 + date_part('hour', ts_waiting)*3600 + date_part('second', ts_polling) + date_part('minute',ts_polling)*60 + date_part('hour', ts_polling)*3600 AS tot_ringing_sec,date_part('second', ts_polling) + date_part('minute',ts_polling)*60 + date_part('hour', ts_polling)*3600 - 20*(count_dialed - count_polls) AS tot_agent_polling_sec,CASE WHEN ts_servicing = '00:00:00.0000000' THEN 'Unserviced' ELSE 'Serviced' END AS serviced,CASE WHEN ts_servicing = '00:00:00.0000000' THEN 0 ELSE 1 END AS isserviced,                                                                                                    ((DATE_PART('day', time_end::timestamp - time_start::timestamp) * 24 + DATE_PART('hour', time_end::timestamp - time_start::timestamp)) * 60 + DATE_PART('minute', time_end::timestamp - time_start::timestamp)) * 60 + DATE_PART('second', time_end::timestamp - time_start::timestamp) AS duration                                                  FROM callcent_queuecalls INNER JOIN dn ON (q_num = dn.value) INNER JOIN ( SELECT queue.name, 'queue', queue.fkiddn FROM queue UNION ALL SELECT ringgroup.name, 'RG', ringgroup.fkiddn FROM ringgroup UNION ALL SELECT ivr.name, 'ivr', ivr.fkiddn FROM ivr ) q ON q.fkiddn = dn.iddn LEFT OUTER JOIN (SELECT dn.iddn, dn.value FROM dn ) directoryNum ON callcent_queuecalls.to_dn = directoryNum.value LEFT OUTER JOIN (Select extension.fkiddn, extension.authid FROM extension )ext ON directoryNum.iddn = ext.fkiddn LEFT OUTER JOIN (Select users.fkidextension, users.firstname, users.lastname FROM users ) urs ON urs.fkidextension = ext.fkiddn WHERE time_start AT TIME ZONE 'UTC' > now() - interval '30 minutes'
-sourcetype = 3cx:queuecalls_view
+input_timestamp_column_number = 3
+# input_timestamp_column_name = start_time
+interval = */15 * * * *
+mode = rising
+tail_rising_column_name = end_time
+tail_rising_column_init_ckpt_value = {"value":"YY-mm-dd HH:MM:SS.000","columnType":93}
+query = SELECT queue_call.idcallcent_queuecalls as queuecall_id, queue_call.q_num as q_num, queue_call.time_start as start_time, queue_call.time_end as end_time, \
+queue_call.ts_waiting as ts_waiting, queue_call.ts_polling as ts_polling, queue_call.ts_servicing as ts_servicing, queue_call.ts_locating as ts_locating, \
+queue_call.count_polls as count_polls, queue_call.count_dialed as count_dialed, queue_call.count_rejected as count_rejected, queue_call.count_dials_timed as count_dials_timed, \
+queue_call.reason_noanswercode as reason_noanswercode, queue_call.reason_noanswerdesc as reason_noanswerdesc, queue_call.reason_failcode as reason_failcode, queue_call.reason_faildesc as reason_faildesc, \
+queue_call.call_history_id as call_history_id, queue_call.q_cal as q_cal, queue_call.from_userpart as from_userpart, queue_call.from_displayname as queue_call_displayname, queue_call.to_dialednum as to_dialednum, \
+queue_call.to_dn as to_dn, queue_call.to_dntype as to_dntype, queue_call.call_result as call_result, queue_call.is_visible as is_visible, queue_call.is_agent as is_agent, \
+dn.iddn as dn_iddn, \
+info.name as q_name, \
+extension.fkiddn as extension_iddn, \
+users.iduser as user_id, users.firstname as agent_fname, users.lastname as agent_lname \
+FROM callcent_queuecalls as queue_call \
+INNER JOIN dn as dn ON queue_call.q_num = dn.value AND queue_call.time_end >= ? \
+INNER JOIN ( SELECT queue.name, 'queue', queue.fkiddn FROM queue \
+             UNION ALL SELECT ringgroup.name, 'RG', ringgroup.fkiddn FROM ringgroup \
+             UNION ALL SELECT ivr.name, 'ivr', ivr.fkiddn FROM ivr ) info ON info.fkiddn = dn.iddn \
+LEFT OUTER JOIN dn as directory ON directory.value = queue_call.to_dn \
+LEFT OUTER JOIN extension ON extension.fkiddn = directory.iddn \
+LEFT OUTER JOIN users ON users.fkidextension = extension.fkiddn
+sourcetype = 3cx:queuecalls
+

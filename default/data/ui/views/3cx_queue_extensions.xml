@@ -1,6 +1,13 @@
 <form stylesheet="table_highlight.css" script="table_highlight.js" version="1.1">
   <label>Queue Extensions</label>
   <fieldset submitButton="false">
+    <input type="time" token="tspan1" searchWhenChanged="true">
+      <label>Time Span</label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
     <input type="multiselect" token="hosts3" searchWhenChanged="true">
       <label>Office Name</label>
       <choice value="*">All</choice>
@@ -13,8 +20,8 @@
 | dedup officeNames
 | table host, officeNames
 | sort + host</query>
-        <earliest>0</earliest>
-        <latest></latest>
+        <earliest>$tspan1.earliest$</earliest>
+        <latest>$tspan1.latest$</latest>
       </search>
       <default>*</default>
       <initialValue>*</initialValue>
@@ -31,9 +38,9 @@
       <fieldForLabel>q_field</fieldForLabel>
       <fieldForValue>q_name</fieldForValue>
       <search>
-        <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ | dedup q_name  | eval q_field = q_name + " (" + q_num +")" | table  q_name, q_num, q_field | sort  + q_name</query>
-        <earliest>0</earliest>
-        <latest></latest>
+        <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ | dedup q_name  | eval q_field = q_name + " (" + q_num +")" | sort  + q_name</query>
+        <earliest>$tspan1.earliest$</earliest>
+        <latest>$tspan1.latest$</latest>
       </search>
       <prefix>(</prefix>
       <suffix>)</suffix>
@@ -47,23 +54,15 @@
       <fieldForLabel>AgentE</fieldForLabel>
       <fieldForValue>AgentE</fieldForValue>
       <search>
-        <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval Agent = ag_fname + " " + ag_lname
+        <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval Agent = agent_fname + " " + agent_lname
 | eval AgentE = Agent+" (Ext."+to_dn+")"
 | dedup Agent
-| where to_dn!="" AND to_dn!="1000" 
-| Table AgentE
+| where to_dn!=""
 | sort + AgentE</query>
-        <earliest>@y</earliest>
-        <latest>now</latest>
+        <earliest>$tspan1.earliest$</earliest>
+        <latest>$tspan1.latest$</latest>
       </search>
-    </input>
-    <input type="time" token="tspan1" searchWhenChanged="true">
-      <label>Time Span</label>
-      <default>
-        <earliest>-7d@h</earliest>
-        <latest>now</latest>
-      </default>
     </input>
   </fieldset>
   <row>
@@ -71,9 +70,9 @@
       <title>Extension Agent</title>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$ | eval ex = "$extNum$" | table ex</query>
-          <earliest>0</earliest>
-          <latest></latest>
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$ | eval ex = "$extNum$" | table ex</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
         </search>
         <option name="refresh.display">progressbar</option>
         <option name="underLabel">Display Name</option>
@@ -106,8 +105,8 @@
       <title>Queues involved in</title>
       <table>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname 
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname 
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
 | table q_name, q_num
@@ -128,8 +127,8 @@
       <title>Totals for $extNum$</title>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
 | stats count</query>
@@ -143,8 +142,8 @@
       </single>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced = 1
 | stats count</query>
@@ -157,8 +156,8 @@
       </single>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced = 0
 | stats count</query>
@@ -172,8 +171,8 @@
       </single>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced = 0 AND reason_failcode = 0
 | stats count</query>
@@ -200,11 +199,11 @@
       </input>
       <chart>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
-| dedup idcallcent_queuecalls
+| dedup host, queuecall_id
 | eval Answered = if(isserviced="1","Answered",if(reason_failcode="0","Unanswered","Failed"))
 | timechart span=$tmspan$ count by Answered
 | rename q_name as Queue</query>
@@ -223,8 +222,8 @@
       <title>Call Activity Heat Map</title>
       <chart>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
 | timechart span=1h count
@@ -248,8 +247,8 @@
     <panel>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced=1
 | stats avg(tot_ringing_sec) as avgTT
@@ -265,11 +264,11 @@
     <panel>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced = 1 
-| stats avg(tot_servicing_sec) as avgTT
+| stats avg(ts_servicing_sec) as avgTT
 | eval avgTT = strftime(avgTT,"00:%M:%S")</query>
           <earliest>$tspan1.earliest$</earliest>
           <latest>$tspan1.latest$</latest>
@@ -282,8 +281,8 @@
     <panel>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced = 1 
 | stats avg(tot_agent_polling_sec) as avgTT
@@ -300,26 +299,18 @@
   <row>
     <panel>
       <title>Calls Timeline</title>
-      <input type="time" token="timelinecallspicker" searchWhenChanged="true">
-        <label></label>
-        <default>
-          <earliest>-1d@d</earliest>
-          <latest>@d</latest>
-        </default>
-      </input>
       <viz type="timeline_app.timeline">
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval AgentName = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval AgentName = agent_fname+" "+agent_lname
 | eval Ag = replace("$extNum$"," \(Ext.*","")
 | where AgentName = Ag
 | eval Status = if(isserviced="1", "Answered Call", if(reason_failcode="0", "Unanswered Call", "Failed Call"))
-| eval Duration = (tot_locating_sec+tot_polling_sec+tot_ringing_sec+tot_servicing_sec+tot_waiting_sec)*1000
-| eval StartTime = strptime(time_start, "%Y-%m-%d %H:%M:%S%z")
-| stats count by StartTime, Duration, AgentName, Status
-| table StartTime, Status, AgentName, Duration</query>
-          <earliest>$timelinecallspicker.earliest$</earliest>
-          <latest>$timelinecallspicker.latest$</latest>
+| eval Duration = (ts_locating_sec+tot_ringing_sec+ts_servicing_sec)*1000
+| stats count by _time, Duration, AgentName, Status
+| table _time, Status, AgentName, Duration</query>
+          <earliest>$tspan1.earliest$</earliest>
+          <latest>$tspan1.latest$</latest>
         </search>
         <option name="drilldown">none</option>
         <option name="height">134</option>
@@ -339,16 +330,15 @@
       <title>Calls Involved In</title>
       <table id="highlight">
         <search>
-          <query>`default_index` sourcetype="3cx:queuecalls_view" $hosts3$ $queue1$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
-| eval Outcome = if(isserviced="1","Call was answered","Call was not answered") 
-| eval newtime =  if(isnull(time_start) OR time_start = "00:00:00", "00:00:00",time_start)
-| eval formatTime = strftime(strptime(time_start,"%Y-%m-%d %H:%M:%S"),"%b %d, %Y %I:%M:%S %p")
+| eval Outcome = if(isserviced="1","Call was answered","Call was not answered")
+| eval formatTime = strftime(_time,"%b %d, %Y %I:%M:%S %p")
 | eval RingT = tostring(tot_ringing_sec,"duration") | rex field=RingT "(?&lt;RingTm&gt;.*\.\d)"
-| eval TalkT = tostring(tot_servicing_sec,"duration") | rex field=TalkT "(?&lt;TalkTm&gt;.*\.\d)"
-| rename TalkTm as "Talking (s)", RingTm as "Ringing (s)", idcallcent_queuecalls as "Call ID", formatTime as "Time", from_displayname as "From", q_num as "Queue"
+| eval TalkT = ts_servicing | rex field=TalkT "(?&lt;TalkTm&gt;.*\.\d)"
+| rename TalkTm as "Talking (s)", RingTm as "Ringing (s)", queuecall_id as "Call ID", formatTime as "Time", queue_call_displayname as "From", q_num as "Queue"
 | table "Call ID", "Time", "From", "Queue", Agent, "Ringing (s)","Talking (s)", Outcome</query>
           <earliest>$tspan1.earliest$</earliest>
           <latest>$tspan1.latest$</latest>

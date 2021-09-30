@@ -111,12 +111,22 @@ RELEASE NOTES
 -------------
 Version 2.0.0
 * Removed following inputs from the db_inputs.conf.template file.
-  * calls_view, call_report, cl_party_info
+  * calls_view, call_report, cl_party_info, queuecalls_view
 * Added below new inputs in the db_inputs.conf.template file.
-  * 3cx_calls
-* Database SQL queries for data collection are enhanced for performance.
+  * 3cx_calls, 3cx_queuecalls
+* Database SQL queries updated with the new inputs.
+  * Issue resolved: Updated SQL queries to resolve calls missing issue.
+  * Updated queries for data collection to enhanced for queries performance.
+
 * All dashboards updated based on the new data.
-  * Issue resolved: Calls missing in Splunk
+  * Issues Fixed: Calls count mismatch issue.
+  * Through-out the app dedup with host along-side the call_id, so now that will not strip calls having same call_id from 2 different 3cx systems.
+* All Dashboards:
+  * Filters re-ordered properly.
+  * Removed secondary time-range picker from all the dashboard to make dashboards consistent.
+  * Used time-range picker to populate all input dropdown results.
+  * Improve searches for input filters to populate it faster.
+  * Added base-search queries to load dashboard faster and to significantly reduce load-time when changing input filter in the dashboards.
 * Call Logs Dashboard:
   * Added a lot more important fields to look at for more insights.
 
