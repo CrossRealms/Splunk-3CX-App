@@ -1,285 +1,270 @@
 <form version="1.1">
-  <label>Agent Queue Logins</label>
-  <fieldset submitButton="false"></fieldset>
+  <label>Agent Logins</label>
+  <description>View statistics and summaries for Agent login sessions</description>
+  <search id="agent_login_list">
+    <query>`default_index` sourcetype="3cx:queue_agent_logins" is_loggedin_in_queue=t ($o_name$) ($queue_field$) | dedup agent_num | eval AgentE = agent_fname + " " + agent_lname + " (Ext."+agent_num+")" | eval Agent="Ext.".agent_num." - ".agent_fname." ".agent_lname | fields agent_num, AgentE, Agent</query>
+    <earliest>$time_field.earliest$</earliest>
+    <latest>$time_field.latest$</latest>
+    <done>
+      <set token="tkn_agents_search">$result.Agents$</set>
+    </done>
+  </search>
+  <search base="agent_login_list">
+    <query>| table Agent | stats values(Agent) as Agent | eval Agents=mvjoin(Agent, "\",\"") | eval Agents="\"".Agents."\"" </query>
+    <done>
+      <set token="tkn_agents_search">$result.Agents$</set>
+    </done>
+  </search>
+  <search id="agents_login_timerange_finder">
+    <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), extra_latest_time=info_max_time</query>
+    <earliest>$time_field.earliest$</earliest>
+    <latest>$time_field.latest$</latest>
+    <done>
+      <set token="tkn_extra_earliest_time">$result.extra_earliest_time$</set>
+      <set token="tkn_extra_latest_time">$result.extra_latest_time$</set>
+      <set token="tkn_earliest_time">$result.info_min_time$</set>
+      <set token="tkn_latest_time">$result.info_max_time$</set>
+    </done>
+  </search>
+  <search id="agents_login_basesearch">
+    <query>`default_index` sourcetype="3cx:queue_agent_logins" earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup idcallcent_ag_queuestatus
+| transaction q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
+| eval login_time=strptime(mvindex(timeofupdate,0), "%Y-%m-%d %H:%M:%S"), logout_time=strptime(mvindex(timeofupdate,1), "%Y-%m-%d %H:%M:%S")
+| dedup agent_num, q_num, login_time
+| eval login_time=if(login_time&lt;$tkn_earliest_time$, $tkn_earliest_time$, login_time) | where login_time&lt;logout_time
+| eval duration=logout_time-login_time
+| fields - _raw | fields _time, agent_*, duration, eventcount, host, idcallcent_ag_queu_status, is_loggedin_in_all_queues, is_loggedin_in_queue, login_time, logout_time, q_name, q_num, user_id, timeofupdate | table _time, agent_*, duration, eventcount, host, idcallcent_ag_queu_status, is_loggedin_in_all_queues, is_loggedin_in_queue, login_time, logout_time, q_name, q_num, user_id, timeofupdate</query>
+  </search>
+  <search id="agents_login_timerange_finder_for_agent_login_timeline_panel">
+    <query>| makeresults | addinfo</query>
+    <earliest>$timeRange_agent_login_timeline.earliest$</earliest>
+    <latest>$timeRange_agent_login_timeline.latest$</latest>
+    <done>
+      <set token="tkn_earliest_time_for_agent_timeline">$result.info_min_time$</set>
+      <set token="tkn_latest_time_for_agent_timeline">$result.info_max_time$</set>
+    </done>
+  </search>
+  <search base="agents_login_basesearch" id="agents_login_basesearch_for_agent_timeline">
+    <query>| where login_time&gt;=$tkn_earliest_time_for_agent_timeline$ AND logout_time&lt;=$tkn_latest_time_for_agent_timeline$</query>
+  </search>
+  <fieldset submitButton="false">
+    <input type="time" token="time_field" searchWhenChanged="true">
+      <label></label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="multiselect" token="o_name" searchWhenChanged="true">
+      <label>Office</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <prefix>host IN (</prefix>
+      <suffix>)</suffix>
+      <initialValue>*</initialValue>
+      <valuePrefix>"</valuePrefix>
+      <delimiter>, </delimiter>
+      <fieldForLabel>officeNames</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>`default_index`
+| lookup host_lookup.csv host OUTPUT hostname
+| eval officeNames = if(isnull(hostname),host,hostname)
+| dedup officeNames
+| table host, officeNames
+| sort + host</query>
+        <earliest>$time_field.earliest$</earliest>
+        <latest>$time_field.latest$</latest>
+      </search>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="queue_field" searchWhenChanged="true">
+      <label>Queue(s)</label>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <prefix>q_num IN (</prefix>
+      <suffix>)</suffix>
+      <initialValue>*</initialValue>
+      <valuePrefix>"</valuePrefix>
+      <delimiter>, </delimiter>
+      <fieldForLabel>fqname</fieldForLabel>
+      <fieldForValue>q_num</fieldForValue>
+      <search>
+        <query>`default_index` sourcetype="3cx:queuecalls" $o_name$ | dedup q_num | eval fqname = q_name+" ("+q_num+")" | sort + q_name</query>
+        <earliest>$time_field.earliest$</earliest>
+        <latest>$time_field.latest$</latest>
+      </search>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="agnts" searchWhenChanged="true">
+      <label>Agents</label>
+      <choice value="*">All Agents</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <prefix>agent_num IN (</prefix>
+      <suffix>)</suffix>
+      <delimiter>, </delimiter>
+      <fieldForLabel>AgentE</fieldForLabel>
+      <fieldForValue>agent_num</fieldForValue>
+      <search base="agent_login_list">
+        <query>| table AgentE, agent_num | sort + AgentE</query>
+      </search>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+  </fieldset>
   <row>
     <panel>
-      <title>Timeline of Agent Logins</title>
-      <input type="multiselect" token="q_timeline" searchWhenChanged="true">
-        <label>Queue</label>
-        <default>*</default>
-        <choice value="*">ALL</choice>
-        <fieldForLabel>q_num</fieldForLabel>
-        <fieldForValue>q_num</fieldForValue>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-| dedup q_num
-| Table q_num
-| sort + q_num</query>
+      <title>Average Time Spent Logged in per Queue</title>
+      <chart>
+        <title>(in Minutes)</title>
+        <search base="agents_login_basesearch">
+          <query>| search $queue_field$ $o_name$ $agnts$ 
+| stats avg(duration) as duration by q_name
+| eval "Avg Time" = round(duration/60,3) | fields - duration
+| rename q_name as Queue
+| sort - "Avg Time"</query>
         </search>
-        <prefix>(</prefix>
-        <suffix>)</suffix>
-        <delimiter> OR </delimiter>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">-90</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.legend.placement">top</option>
+        <option name="height">351</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Top/Bottom 10 Agents with total Queue Time</title>
+      <input type="dropdown" token="sort_sign" searchWhenChanged="true">
+        <label></label>
+        <choice value="-">Top 10 Agents</choice>
+        <choice value="+">Bottom 10 Agents</choice>
+        <default>-</default>
+        <initialValue>-</initialValue>
       </input>
-      <input type="multiselect" token="ag_timeline" searchWhenChanged="true">
-        <label>Agent</label>
-        <default>*</default>
-        <choice value="*">ALL</choice>
-        <fieldForLabel>ag_num</fieldForLabel>
-        <fieldForValue>ag_num</fieldForValue>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-| dedup ag_num
-| Table ag_num
-| sort + ag_num</query>
+      <chart>
+        <title>(in Hours)</title>
+        <search base="agents_login_basesearch">
+          <query>| search $queue_field$ $o_name$ $agnts$
+| dedup agent_num, login_time
+| eval Agent = agent_fname + " " + agent_lname
+| stats sum(duration) as duration by Agent
+| eval Time = round(duration/3600,2)
+| sort $sort_sign$ Time
+| rename Time AS "Hours "
+| head 10</query>
         </search>
-        <prefix>(</prefix>
-        <suffix>)</suffix>
-        <delimiter> OR </delimiter>
-      </input>
-      <input type="time" token="tr_timeline" searchWhenChanged="true">
-        <label>Time Range</label>
-        <default>
-          <earliest>-24h@h</earliest>
-          <latest>now</latest>
-        </default>
-      </input>
-      <single>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-          $q_timeline$
-          $ag_timeline$
-          | dedup IDIn
-          | stats count</query>
-          <earliest>$tr_timeline.earliest$</earliest>
-          <latest>$tr_timeline.latest$</latest>
-        </search>
-        <option name="height">60</option>
-        <option name="underLabel">Total Logins</option>
-      </single>
-      <single>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-          $q_timeline$
-          $ag_timeline$
-          | dedup IDIn
-          | stats avg(SecondsLoggedIn) as avg
-          | eval avg = if(isnull(avg),"00:00:00",replace(tostring(avg,"duration"), "\.\d+",""))</query>
-          <earliest>$tr_timeline.earliest$</earliest>
-          <latest>$tr_timeline.latest$</latest>
-        </search>
-        <option name="height">60</option>
-        <option name="numberPrecision">0.00</option>
-        <option name="underLabel">Average Time Logged In</option>
-      </single>
-      <viz type="timeline_app.timeline">
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-$q_timeline$
-$ag_timeline$
-| eval sTime = relative_time(strptime(LoginTime,"%Y-%m-%d %H:%M:%S.%3N"),"-5h")
-| dedup IDIn
-| eval dur = SecondsLoggedIn*1000
-| stats count by sTime, dur, ag_num
-| table sTime ag_num dur</query>
-          <earliest>$tr_timeline.earliest$</earliest>
-          <latest>$tr_timeline.latest$</latest>
-        </search>
-      </viz>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.showPercent">1</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="height">285</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
     </panel>
   </row>
   <row>
     <panel>
-      <title>Top 5 Agents with the most time logged in</title>
-      <input type="time" token="tf_loggedin" searchWhenChanged="true">
-        <label></label>
-        <default>
-          <earliest>0</earliest>
-          <latest></latest>
-        </default>
-      </input>
-      <chart>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-| dedup IDIn
-| stats sum(SecondsLoggedIn) as Time by ag_num
-| sort - Time
-| rename ag_num AS Agent, Time AS "Time "
-| head 5</query>
-          <earliest>$tf_loggedin.earliest$</earliest>
-          <latest>$tf_loggedin.latest$</latest>
-        </search>
-        <option name="charting.chart">pie</option>
-        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
-        <option name="charting.drilldown">all</option>
-        <option name="charting.fontColor">8e8e8e</option>
-        <option name="charting.foregroundColor">white</option>
-        <option name="charting.seriesColors">[0xFF0033,0xFF3333,0xFF6633,0xFF9933,0xFFCC33,0xFFFF33,0xFFFF66,0xFFFF99,0xFFFFCC,0xFFFFCC]</option>
-        <option name="height">316</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>List of all Queue Logins</title>
-      <input type="multiselect" token="ag_qlogins" searchWhenChanged="true">
-        <label>Agent</label>
-        <default>*</default>
-        <prefix>(</prefix>
-        <suffix>)</suffix>
-        <!-- All the values and their valuePrefix and valueSuffix will be concatenated together with the delimiter between them -->
-        <delimiter> OR </delimiter>
-        <choice value="*">ALL</choice>
-        <fieldForLabel>ag_num</fieldForLabel>
-        <fieldForValue>ag_num</fieldForValue>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-| dedup ag_num
-| Table ag_num
-| sort + ag_num</query>
-        </search>
-      </input>
-      <input type="multiselect" token="queues" searchWhenChanged="true">
-        <label>Queues</label>
-        <default>*</default>
-        <!-- The final value will be surrounded by prefix and suffix -->
-        <prefix>(</prefix>
-        <suffix>)</suffix>
-        <!-- All the values and their valuePrefix and valueSuffix will be concatenated together with the delimiter between them -->
-        <delimiter> OR </delimiter>
-        <choice value="*">ALL</choice>
-        <fieldForLabel>q_num</fieldForLabel>
-        <fieldForValue>q_num</fieldForValue>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-| dedup q_num
-| Table q_num
-| sort + q_num</query>
-        </search>
-      </input>
+      <title>Agent Login Summary</title>
       <table>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins" $queues$ $ag_qlogins$
-| sort - _time
-| dedup _time
-| rename q_num AS Queue, ag_num AS Agent, LoginTime AS "Time of Login", LogoutTime AS "Logged out at"
-| Table "Time of Login", Agent, Queue,"Logged out at"</query>
-          <earliest>0</earliest>
-          <latest></latest>
+        <search base="agents_login_basesearch">
+          <query>| search $queue_field$ $o_name$ $agnts$
+| eval qq = q_name+" ("+q_num+")"
+| eval Agent = agent_fname + " " + agent_lname
+| stats values(q_num) as Qlist, dc(logout_time) as logins, avg(duration) as AvgTLIn, latest(logout_time) as lastactive, sum(duration) as TotTLIn values(qq) as Queues by Agent 
+| eval ToLIn = tostring(TotTLIn,"duration") | rex field=ToLIn "(?&lt;dayAndHours&gt;.*)\:(?&lt;mins&gt;\d+)\:(?&lt;secs&gt;\d+)"
+| eval TTot1 = "("+replace(dayAndHours,"\+","d ")+"h "+mins+"m "+secs+"s )"
+| eval ToLIn = round(TotTLIn/3600,2) | eval ToLIn = ToLIn+" hours "+TTot1
+| eval ToTLIn = tostring(AvgTLIn,"duration") | rex field=ToTLIn "(?&lt;dayAndHours2&gt;.*)\:(?&lt;mins2&gt;\d+)\:(?&lt;secs2&gt;\d+)"
+| eval TAvg1 = "("+replace(dayAndHours2,"\+","d ")+"h "+mins2+"m "+secs2+"s )"
+| eval ToTLIn = round(AvgTLIn/3600,2) | eval ToTLIn = ToTLIn+" hours "+TAvg1
+| eval lastactive = strftime(lastactive,"%a %I:%M %p %z, %b %d %Y")
+| table Agent, Queues, lastactive, logins, ToLIn, ToTLIn
+| join Agent [search `default_index` sourcetype="3cx:queuecalls" $queue_field$ $o_name$ earliest=$tkn_earliest_time$ latest=$tkn_latest_time$ | eval Agent = agent_fname + " " + agent_lname | eval svc = if(isserviced=1,1,0) | stats sum(svc) as "Calls Serviced" by Agent ]
+| rename ToLIn as "Total Time Spent Logged In", ToTLIn as "Avg Time Spent Logged In", logins as "# of Logins", lastactive as "Last Time Active"</query>
         </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
       </table>
     </panel>
   </row>
   <row>
     <panel>
-      <title>Total logins per Queue</title>
-      <input type="time" token="t_logins" searchWhenChanged="true">
+      <title>Average Time Spent Logged into Queue</title>
+      <input type="dropdown" token="srtavg" searchWhenChanged="true">
         <label></label>
-        <default>
-          <earliest></earliest>
-          <latest></latest>
-        </default>
+        <choice value="-">Top 10</choice>
+        <choice value="+">Bottom 10</choice>
+        <default>-</default>
+        <initialValue>-</initialValue>
       </input>
       <chart>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-$q_avgt$
-| dedup IDIn
-| rename q_num AS Queue
-| stats count(LoginTime) AS Logins by Queue</query>
-          <earliest>$t_logins.earliest$</earliest>
-          <latest>$t_logins.latest$</latest>
+        <search base="agents_login_basesearch">
+          <query>| search $queue_field$ $o_name$ $agnts$
+| dedup agent_num, login_time
+| eval Agent = agent_fname + " " + agent_lname
+| stats avg(duration) AS agg BY Agent
+| eval agg = round(agg/3600,2)
+| sort $srtavg$ agg
+| head 10
+| rename agg as "Average Hours"</query>
         </search>
         <option name="charting.chart">column</option>
-      </chart>
-    </panel>
-    <panel>
-      <title>Average time logged in per Extension</title>
-      <input type="multiselect" token="q_avgt">
-        <label>Queue(s)</label>
-        <default>*</default>
-        <choice value="*">ALL</choice>
-        <prefix>(</prefix>
-        <suffix>)</suffix>
-        <delimiter> OR </delimiter>
-        <fieldForLabel>q_num</fieldForLabel>
-        <fieldForValue>q_num</fieldForValue>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-| dedup q_num
-| Table q_num
-| sort + q_num</query>
-        </search>
-      </input>
-      <input type="multiselect" token="ag_avgt" searchWhenChanged="true">
-        <label>Agent(s)</label>
-        <default>*</default>
-        <choice value="*">ALL</choice>
-        <prefix>(</prefix>
-        <suffix>)</suffix>
-        <delimiter> OR </delimiter>
-        <fieldForLabel>ag_num</fieldForLabel>
-        <fieldForValue>ag_num</fieldForValue>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-| dedup ag_num
-| Table ag_num
-| sort + ag_num</query>
-        </search>
-      </input>
-      <chart>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-$q_avgt$
-$ag_avgt$
-| dedup IDIn
-| rename ag_num AS Agent
-| stats avg(SecondsLoggedIn) AS "Average Time Logged In" BY Agent</query>
-          <earliest>$t_logins.earliest$</earliest>
-          <latest>$t_logins.latest$</latest>
-        </search>
-        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.legend.placement">top</option>
+        <option name="height">320</option>
+        <option name="refresh.display">progressbar</option>
       </chart>
     </panel>
   </row>
   <row>
     <panel>
-      <title>Timeline: Login Time per Agent</title>
-      <input type="multiselect" token="q_timeline2" searchWhenChanged="true">
-        <label>Queue(s)</label>
-        <default>*</default>
-        <choice value="*">ALL</choice>
-        <fieldForLabel>q_num</fieldForLabel>
-        <fieldForValue>q_num</fieldForValue>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-| dedup q_num
-| Table q_num
-| sort + q_num</query>
-        </search>
-        <prefix>(</prefix>
-        <suffix>)</suffix>
-        <delimiter> OR </delimiter>
-      </input>
-      <input type="time" token="t_logintime" searchWhenChanged="true">
+      <title>Timeline of Agent Logins</title>
+      <input type="time" token="timeRange_agent_login_timeline">
         <label></label>
         <default>
-          <earliest></earliest>
-          <latest></latest>
+          <earliest>-1d@d</earliest>
+          <latest>@d</latest>
         </default>
       </input>
-      <chart>
-        <search>
-          <query>source="agent_logins.csv" host="shockwave-pc" sourcetype="agent_logins"
-          $q_timeline2$
-| dedup IDIn
-| timechart span=1d sum(SecondsLoggedIn) by ag_num</query>
-          <earliest>$t_logintime.earliest$</earliest>
-          <latest>$t_logintime.latest$</latest>
+      <viz type="timeline_app.timeline">
+        <search base="agents_login_basesearch_for_agent_timeline">
+          <query>| search $queue_field$ $o_name$ $agnts$
+| dedup agent_num, login_time
+| eval Agent = agent_fname + " " + agent_lname
+| eval dur = duration*1000
+| stats count by login_time, dur, Agent
+| table login_time Agent dur</query>
         </search>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.showDataLabels">none</option>
-        <option name="charting.chart.stackMode">default</option>
-        <option name="charting.layout.splitSeries">0</option>
-        <option name="charting.legend.placement">top</option>
-      </chart>
+        <option name="height">294</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="timeline_app.timeline.axisTimeFormat">SECONDS</option>
+        <option name="timeline_app.timeline.colorMode">categorical</option>
+        <option name="timeline_app.timeline.maxColor">#DA5C5C</option>
+        <option name="timeline_app.timeline.minColor">#FFE8E8</option>
+        <option name="timeline_app.timeline.numOfBins">6</option>
+        <option name="timeline_app.timeline.tooltipTimeFormat">SECONDS</option>
+        <option name="timeline_app.timeline.useColors">0</option>
+      </viz>
+      <table>
+        <search base="agents_login_basesearch_for_agent_timeline">
+          <query>| search $queue_field$ $o_name$ $agnts$
+| eval Agent = agent_fname + " " + agent_lname
+| sort + login_time
+| eval LoginTime = strftime(login_time,"%b %d, %Y %I:%M %p")
+| eval LogoutTime = strftime(logout_time,"%b %d, %Y %I:%M %p")
+| eval qq = q_name+" ("+q_num+")"
+| stats values(qq) as qq by LogoutTime, agent_num, LoginTime, Agent
+| sort - LogoutTime
+| rename qq AS "Queue(s)", agent_num AS Extension, LoginTime AS "Time of Login", LogoutTime AS "Logged out at"
+| Table "Time of Login", Agent, Extension, "Queue(s)","Logged out at"</query>
+        </search>
+        <option name="count">10</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
     </panel>
   </row>
 </form>

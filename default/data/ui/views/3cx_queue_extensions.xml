@@ -1,5 +1,16 @@
 <form stylesheet="table_highlight.css" script="table_highlight.js" version="1.1">
   <label>Queue Extensions</label>
+  <search id="agents_login_timerange_finder">
+    <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), extra_latest_time=info_max_time</query>
+    <earliest>$tspan1.earliest$</earliest>
+        <latest>$tspan1.latest$</latest>
+    <done>
+      <set token="tkn_extra_earliest_time">$result.extra_earliest_time$</set>
+      <set token="tkn_extra_latest_time">$result.extra_latest_time$</set>
+      <set token="tkn_earliest_time">$result.info_min_time$</set>
+      <set token="tkn_latest_time">$result.info_max_time$</set>
+    </done>
+  </search>
   <fieldset submitButton="false">
     <input type="time" token="tspan1" searchWhenChanged="true">
       <label>Time Span</label>
@@ -82,19 +93,21 @@
       <title>Activity</title>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:agent_logins"
- $hosts3$
-| eval ex = ag_fname+" "+ag_lname
+          <query>`default_index` sourcetype="3cx:queue_agent_logins" earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup idcallcent_ag_queuestatus
+| transaction q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
+| eval login_time=strptime(mvindex(timeofupdate,0), "%Y-%m-%d %H:%M:%S"), logout_time=strptime(mvindex(timeofupdate,1), "%Y-%m-%d %H:%M:%S")
+| dedup agent_num, q_num, login_time
+| eval login_time=if(login_time&lt;$tkn_earliest_time$, $tkn_earliest_time$, login_time) | where login_time&lt;logout_time
+| eval duration=logout_time-login_time
+| search $hosts3$ $queue1$
+| eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
-| eval logoutTime = strptime(logouttime, "%Y-%m-%d %H:%M:%S%z") 
-| sort - logoutTime
-| eval LogoutTime = strftime(strptime(logouttime,"%Y-%m-%d %H:%M:%S%z"),"%b %d, %Y %I:%M %p")
+| sort - logout_time
+| eval LogoutTime = strftime(logout_time,"%b %d, %Y %I:%M %p")
 | rename LogoutTime AS "Last time active"
 | table "Last time active"
 | head 1</query>
-          <earliest>$tspan1.earliest$</earliest>
-          <latest>$tspan1.latest$</latest>
         </search>
         <option name="drilldown">none</option>
         <option name="refresh.display">progressbar</option>

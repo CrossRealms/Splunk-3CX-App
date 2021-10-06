@@ -45,38 +45,29 @@ sourcetype = 3cx:calls
 
 
 
-[agent_login_export]
+[3cx_agent_login]
 connection = 3CX
 disabled = 0
-index = 3cx
+index = 3cxtest
 index_time_mode = dbColumn
-input_timestamp_column_number = 5
-interval = 0,30 * * * *
-mode = batch
-query = WITH\
-    rows\
-    AS\
-    (\
-        SELECT idcallcent_ag_queuestatus, q_num, ag_num, users.firstname, users.lastname AS ag_lname, timeofupdate, is_loggedin_in_queue, is_loggedin_in_allqueues, ROW_NUMBER() OVER  (ORDER BY q_num, ag_num, timeofupdate) AS rn, LAG(timeofupdate) OVER  (ORDER BY q_num, ag_num, timeofupdate) pDataDate\
-        FROM callcent_ag_queuestatus INNER JOIN dn on (cast (dn.value as int8) = cast(callcent_ag_queuestatus.ag_num as int8)) INNER JOIN extension ON (dn.iddn = cast (extension.fkiddn as int8)) INNER JOIN users ON (extension.fkiddn = users.fkidextension)\
-    ),\
-    rowsIn\
-    AS\
-    (\
-        SELECT idcallcent_ag_queuestatus, q_num, ag_num, timeofupdate, is_loggedin_in_queue, is_loggedin_in_allqueues, rn, pDataDate\
-        FROM rows INNER JOIN dn on (cast (dn.value as int8) = cast(rows.ag_num as int8)) INNER JOIN extension ON (dn.iddn = cast (extension.fkiddn as int8)) INNER JOIN users ON (extension.fkiddn = users.fkidextension)\
-        WHERE is_loggedin_in_queue='t'\
-    ),\
-    rowsOut\
-    AS\
-    (\
-        SELECT idcallcent_ag_queuestatus, q_num, users.firstname, users.lastname, ag_num, timeofupdate, is_loggedin_in_queue, is_loggedin_in_allqueues, rn, pDataDate, CASE WHEN (LAG(rn) OVER (ORDER BY rn) + 1) IS NULL THEN 1 ELSE (LAG(rn) OVER (ORDER BY rn) + 1)   END as in_row\
-        FROM rows INNER JOIN dn on (cast (dn.value as int8) = cast(rows.ag_num as int8)) INNER JOIN extension ON (dn.iddn = cast (extension.fkiddn as int8)) INNER JOIN users ON (extension.fkiddn = users.fkidextension)\
-        WHERE is_loggedin_in_queue='f'\
-    )\
-SELECT o.q_num, o.ag_num, o.firstname AS ag_fname, o.lastname AS ag_lname, i.timeofupdate AT TIME ZONE 'UTC' as LoginTime, o.timeofupdate AT TIME ZONE 'UTC' as LogoutTime, ((DATE_PART('day', o.timeofupdate::timestamp - i.timeofupdate::timestamp) * 24 +  DATE_PART('hour', o.timeofupdate::timestamp - i.timeofupdate::timestamp)) * 60 +    DATE_PART('minute', o.timeofupdate::timestamp - i.timeofupdate::timestamp)) * 60 +    DATE_PART('second', o.timeofupdate::timestamp - i.timeofupdate::timestamp) as    SecondsLoggedIn\
-FROM rowsOut o JOIN rowsIn i ON i.rn = o.in_row AND i.ag_num = o.ag_num AND o.q_num = i.q_num WHERE i.timeofupdate AT TIME ZONE 'UTC' > now() - interval '30 minutes'
-sourcetype = 3cx:agent_logins
+input_timestamp_column_number = 2
+# input_timestamp_column_name = timeofupdate
+interval = */15 * * * *
+mode = rising
+tail_rising_column_name = timeofupdate
+tail_rising_column_init_ckpt_value = {"value":"YY-mm-dd HH:MM:SS.000","columnType":93}
+query = SELECT queue_status.idcallcent_ag_queuestatus as idcallcent_ag_queuestatus, queue_status.timeofupdate as timeofupdate, queue_status.is_loggedin_in_queue as is_loggedin_in_queue, queue_status.is_loggedin_in_allqueues as is_loggedin_in_allqueues, \
+queue_status.q_num as q_num, info.name as q_name, \
+queue_status.ag_num as agent_num, users.iduser as user_id, users.firstname as agent_fname, users.lastname as agent_lname \
+FROM callcent_ag_queuestatus as queue_status \
+INNER JOIN dn as dn ON queue_status.q_num = dn.value AND queue_status.timeofupdate >= ? \
+INNER JOIN ( SELECT queue.name, 'queue', queue.fkiddn FROM queue \
+             UNION ALL SELECT ringgroup.name, 'RG', ringgroup.fkiddn FROM ringgroup \
+             UNION ALL SELECT ivr.name, 'ivr', ivr.fkiddn FROM ivr ) info ON info.fkiddn = dn.iddn \
+INNER JOIN dn as agent_directory ON agent_directory.value = queue_status.ag_num \
+INNER JOIN extension ON extension.fkiddn = agent_directory.iddn \
+INNER JOIN users ON users.fkidextension = extension.fkiddn
+sourcetype = 3cx:queue_agent_logins
 
 
 

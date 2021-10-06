@@ -111,15 +111,15 @@ RELEASE NOTES
 -------------
 Version 2.0.0
 * Removed following inputs from the db_inputs.conf.template file.
-  * calls_view, call_report, cl_party_info, queuecalls_view
+  * calls_view, call_report, cl_party_info, queuecalls_view, agent_login_export
 * Added below new inputs in the db_inputs.conf.template file.
-  * 3cx_calls, 3cx_queuecalls
+  * 3cx_calls, 3cx_queuecalls, 3cx_agent_login
 * Database SQL queries updated with the new inputs.
-  * Issue resolved: Updated SQL queries to resolve calls missing issue.
+  * Issue resolved: Updated SQL queries to resolve calls missing issue and agents login missing issue.
   * Updated queries for data collection to enhanced for queries performance.
 
 * All dashboards updated based on the new data.
-  * Issues Fixed: Calls count mismatch issue.
+  * Issues Fixed: Calls count mismatch issue. Missing agent login data issue.
   * Through-out the app dedup with host along-side the call_id, so now that will not strip calls having same call_id from 2 different 3cx systems.
 * All Dashboards:
   * Filters re-ordered properly.

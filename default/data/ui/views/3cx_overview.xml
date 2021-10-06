@@ -10,6 +10,17 @@
     <earliest>$tOverview.earliest$</earliest>
     <latest>$tOverview.latest$</latest>
   </search>
+  <search id="agents_login_timerange_finder">
+    <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), extra_latest_time=info_max_time</query>
+    <earliest>$tOverview.earliest$</earliest>
+    <latest>$tOverview.latest$</latest>
+    <done>
+      <set token="tkn_extra_earliest_time">$result.extra_earliest_time$</set>
+      <set token="tkn_extra_latest_time">$result.extra_latest_time$</set>
+      <set token="tkn_earliest_time">$result.info_min_time$</set>
+      <set token="tkn_latest_time">$result.info_max_time$</set>
+    </done>
+  </search>
   <fieldset submitButton="false"></fieldset>
   <row>
     <panel>
@@ -131,11 +142,12 @@
 | timechart span=1h count by call_dir
 | eval Hour=strftime(_time,"%H") 
 | stats $tkn_aggregation_call$(*) as * by Hour
-| append [| search `default_index` sourcetype="3cx:agent_logins" $hosts1$
-| dedup ag_num, logintime
-| where secondsloggedin&gt;$tkn_agent_login_less_than$
-| eval starttime=strptime(logintime,"%Y-%m-%d %H:%M:%S%:::z"),endtime=strptime(logouttime,"%Y-%m-%d %H:%M:%S%:::z")
-| eval time = mvrange(starttime,endtime,"1h") | mvexpand time | eval _time = time
+| append [| search `default_index` sourcetype="3cx:queue_agent_logins" $hosts1$ earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup idcallcent_ag_queuestatus 
+| transaction q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
+| eval login_time=strptime(mvindex(timeofupdate,0), "%Y-%m-%d %H:%M:%S"), logout_time=strptime(mvindex(timeofupdate,1), "%Y-%m-%d %H:%M:%S")
+| dedup agent_num, login_time
+| where duration&gt;$tkn_agent_login_less_than$
+| eval time = mvrange(login_time,logout_time,"1h") | mvexpand time | where time&gt;=$tkn_earliest_time$ AND time&lt;=$tkn_latest_time$ | eval _time = time
 | timechart span=1h count
 | eval Hour=strftime(_time,"%H") | stats $tkn_aggregation_call$(count) as Agents_LoggedIn by Hour]
 | stats first(*) as * by Hour
