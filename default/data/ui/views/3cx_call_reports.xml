@@ -116,7 +116,8 @@
       <table id="callrep">
         <search base="all_calls_search">
           <query>| search $hosts4$ (src_caller_number IN $iext$ OR dst_caller_number IN $iext$) (src_caller_number IN $exnums$ OR dst_caller_number IN $exnums$) ($pcallid$) $qcallopt$ call_dir IN $tkn_call_dir$
-| table host, call_id, call_dir, call_start_time, call_end_time, call_is_answered, call_ringing_dur, call_talking_dur, seg_start_time, answer_time, seg_end_time, src_caller_number, src_display_name, dst_caller_number, dst_display_name, has_queue, recording_url, seg_action_id, act_caller_number</query>
+| table host, call_id, call_dir, call_start_time, call_end_time, call_is_answered, call_ringing_dur, call_talking_dur, seg_start_time, answer_time, seg_end_time, src_caller_number, src_display_name, dst_caller_number, dst_display_name, has_queue, recording_url, seg_action_id, act_caller_number
+| rename recording_url as Recording</query>
         </search>
         <option name="count">25</option>
         <option name="drilldown">cell</option>
