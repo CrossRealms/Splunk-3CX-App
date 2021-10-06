@@ -129,6 +129,10 @@ Version 2.0.0
   * Added base-search queries to load dashboard faster and to significantly reduce load-time when changing input filter in the dashboards.
 * Call Logs Dashboard:
   * Added a lot more important fields to look at for more insights.
+* Removed unused dashboard: 3cx_queue_logins.xml. Please use "Agent Logins" dashboard instead.
+* Removed all reports. Use dashboards and dashboard queries instead.
+  * Log for all Calls, Agent Login Timeline, Data Not Being Received: Call Report, Data Not Being Received: Agent Logins, Data Not Being Received: Calls View, Data Not Being Received: Queue Calls View, Data Not Being Received: Cl Party Info, Top 10 Agents with Most Time Logged In, Calls Volume per Queue, Calls Summary for each Agent, Agent Logins Summary, Calls Summary for each Queue, Agent Logins Call Summary 
+* Removed unused lookups: nodata_agentlogins.csv, nodata_callreport.csv, nodata_callview.csv, no_data_clpartyinfo.csv, nodata_queuecallsview.csv
 
 
 Upgrade guide from 1.2.x to 2.0.0
