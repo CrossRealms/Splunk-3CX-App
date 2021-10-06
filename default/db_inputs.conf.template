@@ -56,7 +56,7 @@ interval = */15 * * * *
 mode = rising
 tail_rising_column_name = timeofupdate
 tail_rising_column_init_ckpt_value = {"value":"YY-mm-dd HH:MM:SS.000","columnType":93}
-query = SELECT queue_status.idcallcent_ag_queuestatus as idcallcent_ag_queuestatus, queue_status.timeofupdate as timeofupdate, queue_status.is_loggedin_in_queue as is_loggedin_in_queue, queue_status.is_loggedin_in_allqueues as is_loggedin_in_allqueues, \
+query = SELECT queue_status.idcallcent_ag_queuestatus as idcallcent_ag_queuestatus, (queue_status.timeofupdate AT TIME ZONE 'UTC')::timestamptz as timeofupdate, queue_status.is_loggedin_in_queue as is_loggedin_in_queue, queue_status.is_loggedin_in_allqueues as is_loggedin_in_allqueues, \
 queue_status.q_num as q_num, info.name as q_name, \
 queue_status.ag_num as agent_num, users.iduser as user_id, users.firstname as agent_fname, users.lastname as agent_lname \
 FROM callcent_ag_queuestatus as queue_status \
@@ -68,6 +68,8 @@ INNER JOIN dn as agent_directory ON agent_directory.value = queue_status.ag_num 
 INNER JOIN extension ON extension.fkiddn = agent_directory.iddn \
 INNER JOIN users ON users.fkidextension = extension.fkiddn
 sourcetype = 3cx:queue_agent_logins
+
+# Testing Query: SELECT * FROM callcent_ag_queuestatus ORDER BY timeofupdate DESC LIMIT 100;
 
 
 
@@ -82,7 +84,7 @@ interval = */15 * * * *
 mode = rising
 tail_rising_column_name = end_time
 tail_rising_column_init_ckpt_value = {"value":"YY-mm-dd HH:MM:SS.000","columnType":93}
-query = SELECT queue_call.idcallcent_queuecalls as queuecall_id, queue_call.q_num as q_num, queue_call.time_start as start_time, queue_call.time_end as end_time, \
+query = SELECT queue_call.idcallcent_queuecalls as queuecall_id, queue_call.q_num as q_num, (queue_call.time_start AT TIME ZONE 'UTC')::timestamptz as start_time, (queue_call.time_end AT TIME ZONE 'UTC')::timestamptz as end_time, \
 queue_call.ts_waiting as ts_waiting, queue_call.ts_polling as ts_polling, queue_call.ts_servicing as ts_servicing, queue_call.ts_locating as ts_locating, \
 queue_call.count_polls as count_polls, queue_call.count_dialed as count_dialed, queue_call.count_rejected as count_rejected, queue_call.count_dials_timed as count_dials_timed, \
 queue_call.reason_noanswercode as reason_noanswercode, queue_call.reason_noanswerdesc as reason_noanswerdesc, queue_call.reason_failcode as reason_failcode, queue_call.reason_faildesc as reason_faildesc, \
@@ -102,3 +104,4 @@ LEFT OUTER JOIN extension ON extension.fkiddn = directory.iddn \
 LEFT OUTER JOIN users ON users.fkidextension = extension.fkiddn
 sourcetype = 3cx:queuecalls
 
+# Testing Query: SELECT * FROM callcent_queuecalls ORDER BY time_start DESC LIMIT 10;
