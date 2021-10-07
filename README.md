@@ -10,7 +10,7 @@ The Splunk app for 3CX Phone Systems is used to present the 3CX Phone Systems in
 
 
 * Author - CrossRealms International Inc.
-* Version - 1.2.1
+* Version - 2.0.0
 * Build - 1
 * Creates Index - False
 * Compatible with:
