@@ -12,12 +12,13 @@
 
 [default]
 host = <provide host-name for 3CX>
+query_timeout = 120
 
 
 [3cx_calls]
 connection = 3CX
 disabled = 0
-index = 3cxtest
+index = 3cx
 index_time_mode = dbColumn
 input_timestamp_column_number = 9
 # input_timestamp_column_name = seg_start_time
@@ -48,7 +49,7 @@ sourcetype = 3cx:calls
 [3cx_agent_login]
 connection = 3CX
 disabled = 0
-index = 3cxtest
+index = 3cx
 index_time_mode = dbColumn
 input_timestamp_column_number = 2
 # input_timestamp_column_name = timeofupdate
@@ -69,14 +70,12 @@ INNER JOIN extension ON extension.fkiddn = agent_directory.iddn \
 INNER JOIN users ON users.fkidextension = extension.fkiddn
 sourcetype = 3cx:queue_agent_logins
 
-# Testing Query: SELECT * FROM callcent_ag_queuestatus ORDER BY timeofupdate DESC LIMIT 100;
-
 
 
 [3cx_queuecalls]
 connection = 3CX
 disabled = 0
-index = 3cxtest
+index = 3cx
 index_time_mode = dbColumn
 input_timestamp_column_number = 3
 # input_timestamp_column_name = start_time
@@ -103,5 +102,3 @@ LEFT OUTER JOIN dn as directory ON directory.value = queue_call.to_dn \
 LEFT OUTER JOIN extension ON extension.fkiddn = directory.iddn \
 LEFT OUTER JOIN users ON users.fkidextension = extension.fkiddn
 sourcetype = 3cx:queuecalls
-
-# Testing Query: SELECT * FROM callcent_queuecalls ORDER BY time_start DESC LIMIT 10;
