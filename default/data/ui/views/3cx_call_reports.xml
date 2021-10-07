@@ -20,6 +20,13 @@
     </query>
   </search>
   <fieldset submitButton="false">
+    <input type="time" token="timeRange" searchWhenChanged="true">
+      <label>Time Span</label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
     <input type="multiselect" token="hosts4" searchWhenChanged="true">
       <label>Office Name</label>
       <choice value="*">All</choice>
@@ -78,13 +85,6 @@
       <prefix>call_id=</prefix>
       <initialValue>*</initialValue>
     </input>
-    <input type="time" token="timeRange" searchWhenChanged="true">
-      <label>Time Span</label>
-      <default>
-        <earliest>-7d@h</earliest>
-        <latest>now</latest>
-      </default>
-    </input>
     <input type="checkbox" token="qcallopt" searchWhenChanged="true">
       <label></label>
       <choice value="1">Queue Calls</choice>
@@ -109,13 +109,24 @@
       <valuePrefix>"</valuePrefix>
       <valueSuffix>"</valueSuffix>
     </input>
+    <input type="checkbox" token="tkn_is_call_answered">
+      <label>Call Answered?</label>
+      <choice value="t">Yes</choice>
+      <choice value="f">No</choice>
+      <default>t,f</default>
+      <prefix>call_is_answered IN (</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter>, </delimiter>
+    </input>
   </fieldset>
   <row>
     <panel>
       <title>Calls Timetable</title>
       <table id="callrep">
         <search base="all_calls_search">
-          <query>| search $hosts4$ (src_caller_number IN $iext$ OR dst_caller_number IN $iext$) (src_caller_number IN $exnums$ OR dst_caller_number IN $exnums$) ($pcallid$) $qcallopt$ call_dir IN $tkn_call_dir$
+          <query>| search $hosts4$ (src_caller_number IN $iext$ OR dst_caller_number IN $iext$) (src_caller_number IN $exnums$ OR dst_caller_number IN $exnums$) ($pcallid$) $qcallopt$ call_dir IN $tkn_call_dir$ $tkn_is_call_answered$
 | table host, call_id, call_dir, call_start_time, call_end_time, call_is_answered, call_ringing_dur, call_talking_dur, seg_start_time, answer_time, seg_end_time, src_caller_number, src_display_name, dst_caller_number, dst_display_name, has_queue, recording_url, seg_action_id, act_caller_number
 | rename recording_url as Recording</query>
         </search>

@@ -114,6 +114,14 @@
         <option name="charting.legend.placement">top</option>
         <option name="height">370</option>
         <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <condition match="$click.name2$==&quot;Answered&quot;">
+            <link target="_blank">/app/splunk_app_3cx/3cx_call_reports?form.tkn_is_call_answered=t&amp;form.timeRange.earliest=$earliest$&amp;form.timeRange.latest=$latest$</link>
+          </condition>
+          <condition match="$click.name2$==&quot;Unanswered&quot;">
+            <link target="_blank">/app/splunk_app_3cx/3cx_call_reports?form.tkn_is_call_answered=f&amp;form.timeRange.earliest=$earliest$&amp;form.timeRange.latest=$latest$</link>
+          </condition>
+        </drilldown>
       </chart>
     </panel>
   </row>
