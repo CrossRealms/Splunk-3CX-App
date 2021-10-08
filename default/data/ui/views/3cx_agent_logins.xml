@@ -128,7 +128,7 @@
         <option name="charting.axisLabelsX.majorLabelStyle.rotation">-90</option>
         <option name="charting.axisY.scale">linear</option>
         <option name="charting.chart">column</option>
-        <option name="charting.drilldown">all</option>
+        <option name="charting.drilldown">none</option>
         <option name="charting.legend.placement">top</option>
         <option name="height">351</option>
         <option name="refresh.display">progressbar</option>
@@ -157,7 +157,7 @@
         </search>
         <option name="charting.chart">pie</option>
         <option name="charting.chart.showPercent">1</option>
-        <option name="charting.drilldown">all</option>
+        <option name="charting.drilldown">none</option>
         <option name="charting.legend.placement">none</option>
         <option name="height">285</option>
         <option name="refresh.display">progressbar</option>
@@ -217,6 +217,7 @@
         <option name="charting.legend.placement">top</option>
         <option name="height">320</option>
         <option name="refresh.display">progressbar</option>
+        <option name="charting.drilldown">none</option>
       </chart>
     </panel>
   </row>
@@ -264,6 +265,7 @@
         </search>
         <option name="count">10</option>
         <option name="refresh.display">progressbar</option>
+        <option name="drilldown">none</option>
       </table>
     </panel>
   </row>
