@@ -4,7 +4,8 @@
   <search id="all_calls_search">
     <query>`default_index` sourcetype="3cx:calls"
 | dedup host, call_id, seg_order | fields host, act_*, answer_time, call_*, dst_*, has_queue, recording_url, seg_*, src_*
-| eval recording_url = "https://"+lower(host)+":5001/#/download_record/"+recording_url
+| eval recording_url = "https://"+lower(host)+":5001/#/download_record/"+recording_url, src_recording_url = "https://"+lower(host)+":5001/#/download_record/"+src_recording_url, dst_recording_url = "https://"+lower(host)+":5001/#/download_record/"+dst_recording_url
+| eval recording_url = mvappend(recording_url, src_recording_url, dst_recording_url)
 | sort 0 -call_id, + seg_order
 | stats latest(_time) as _time, first(call_dir) as f_call_dir, last(call_*) as l_call_*, list(*) as * by host, call_id | rename l_call_* as call_*, f_call_dir as call_dir
 </query>
