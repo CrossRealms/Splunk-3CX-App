@@ -3,7 +3,7 @@
   <search id="agents_login_timerange_finder">
     <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), extra_latest_time=info_max_time</query>
     <earliest>$tspan1.earliest$</earliest>
-        <latest>$tspan1.latest$</latest>
+    <latest>$tspan1.latest$</latest>
     <done>
       <set token="tkn_extra_earliest_time">$result.extra_earliest_time$</set>
       <set token="tkn_extra_latest_time">$result.extra_latest_time$</set>
@@ -320,6 +320,13 @@
   <row>
     <panel>
       <title>Calls Timeline</title>
+      <input type="time" token="timeRange_for_timeline">
+        <label></label>
+        <default>
+          <earliest>-1d@d</earliest>
+          <latest>@d</latest>
+        </default>
+      </input>
       <viz type="timeline_app.timeline">
         <search>
           <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
@@ -331,8 +338,8 @@
 | eval Duration = (ts_locating_sec+tot_ringing_sec+ts_servicing_sec)*1000
 | stats count by _time, Duration, AgentName, Status
 | table _time, Status, AgentName, Duration</query>
-          <earliest>$tspan1.earliest$</earliest>
-          <latest>$tspan1.latest$</latest>
+          <earliest>$timeRange_for_timeline.earliest$</earliest>
+          <latest>$timeRange_for_timeline.latest$</latest>
         </search>
         <option name="drilldown">none</option>
         <option name="height">134</option>

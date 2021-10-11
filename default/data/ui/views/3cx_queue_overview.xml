@@ -25,7 +25,7 @@
     </done>
   </search>
   <search>
-    <query>`default_index` sourcetype="3cx:queue_agent_logins" is_loggedin_in_queue=t ($hosts2$) ($queues1$) | dedup host, agent_num | eval Agent="Ext.".agent_num." - ".agent_fname." ".agent_lname | fields host, Agent | table host, Agent
+    <query>`default_index` sourcetype="3cx:queue_agent_logins" is_loggedin_in_queue=t ($hosts2$) ($queues1$) | dedup agent_num | eval Agent="Ext.".agent_num." - ".agent_fname." ".agent_lname | fields Agent | table Agent
     | stats values(Agent) as Agent | eval Agents=mvjoin(Agent, "\",\"") | eval Agents="\"".Agents."\"" </query>
     <earliest>$time_overview.earliest$</earliest>
     <latest>$time_overview.latest$</latest>
@@ -74,7 +74,7 @@
       <fieldForLabel>fqname</fieldForLabel>
       <fieldForValue>q_num</fieldForValue>
       <search>
-        <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ | dedup host, q_num | eval fqname = q_name+" ("+q_num+")" | sort + q_name</query>
+        <query>`default_index` sourcetype="3cx:queuecalls" $hosts2$ | dedup q_num | eval fqname = q_name+" ("+q_num+")" | sort + q_name</query>
         <earliest>$time_overview.earliest$</earliest>
         <latest>$time_overview.latest$</latest>
       </search>
@@ -188,10 +188,10 @@
 | timechart span=1h count by call_dir
 | eval Hour=strftime(_time,"%H") 
 | stats $tkn_aggregation$(*) as * by Hour
-| append [| search `default_index` sourcetype="3cx:queue_agent_logins" ($hosts2$) ($queues1$) earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup host, idcallcent_ag_queuestatus
-| transaction host, q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
+| append [| search `default_index` sourcetype="3cx:queue_agent_logins" ($hosts2$) ($queues1$) earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup idcallcent_ag_queuestatus
+| transaction q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
 | eval login_time=strptime(mvindex(timeofupdate,0), "%Y-%m-%d %H:%M:%S"), logout_time=strptime(mvindex(timeofupdate,1), "%Y-%m-%d %H:%M:%S")
-| dedup host, agent_num, login_time
+| dedup agent_num, login_time
 | where duration&gt;$tkn_agent_login_less_than$
 | eval time = mvrange(login_time,logout_time,"1h") | mvexpand time | where time&gt;=$tkn_earliest_time$ AND time&lt;=$tkn_latest_time$ | eval _time = time
 | timechart span=1h count
@@ -305,7 +305,7 @@ $tkn_only_internal_call_seq$
 | eval Ab = if(isserviced="0", 1, 0)
 | eval Ans = if(isserviced="1", 1, 0)
 | eval SlaP = if(tot_ringing_sec&lt;=$slatime$,1,0)
-| stats count as Total, sum(Ab) as Abandoned, sum(Ans) as Answered, sum(ts_servicing_sec) as TotTalk, avg(ts_servicing_sec) as AvgTalk, sum(tot_ringing_sec) as TotRing, avg(tot_ringing_sec) as AvgRing, sum(SlaP) as SlaPc by host, Queue
+| stats count as Total, sum(Ab) as Abandoned, sum(Ans) as Answered, sum(ts_servicing_sec) as TotTalk, avg(ts_servicing_sec) as AvgTalk, sum(tot_ringing_sec) as TotRing, avg(tot_ringing_sec) as AvgRing, sum(SlaP) as SlaPc by Queue
 | eventstats sum(Total) as TotC
 | eval PctOfCalls = round((Total/TotC)*100,2) . " %"
 | eval PctOfSLA = round((SlaPc/Total)*100,2) . " %"
@@ -390,7 +390,7 @@ $tkn_only_internal_call_seq$
 | dedup host, queuecall_id
 | where reason_failcode != 0
 | rename q_name AS "Queue #"
-| chart count(time_start) AS "Abandoned # of Calls" by "Queue #" reason_faildesc</query>
+| chart count(start_time) AS "Abandoned # of Calls" by "Queue #" reason_faildesc</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>
         </search>
@@ -413,7 +413,7 @@ $tkn_only_internal_call_seq$
 | where reason_noanswercode != 0
 | rename q_name AS "Queue #"
 | eval reason_noanswerdesc=case((reason_noanswerdesc="MaxWaitTime"), "Max Wait Time", (reason_noanswerdesc="NoAgents"), "No Agents Signed In", (reason_noanswerdesc="UserRequested"), "User Requested Callback", true(), "IMPOSSIBLE!")
-| chart count(time_start) AS "Abandoned # of Calls" by "Queue #" reason_noanswerdesc</query>
+| chart count(start_time) AS "Abandoned # of Calls" by "Queue #" reason_noanswerdesc</query>
           <earliest>$time_overview.earliest$</earliest>
           <latest>$time_overview.latest$</latest>
         </search>
