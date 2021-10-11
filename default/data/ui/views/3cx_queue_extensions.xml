@@ -49,7 +49,7 @@
       <fieldForLabel>q_field</fieldForLabel>
       <fieldForValue>q_name</fieldForValue>
       <search>
-        <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ | dedup q_name  | eval q_field = q_name + " (" + q_num +")" | sort  + q_name</query>
+        <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ | dedup host, q_name  | eval q_field = q_name + " (" + q_num +")" | sort  + q_name</query>
         <earliest>$tspan1.earliest$</earliest>
         <latest>$tspan1.latest$</latest>
       </search>
@@ -68,7 +68,7 @@
         <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
 | eval Agent = agent_fname + " " + agent_lname
 | eval AgentE = Agent+" (Ext."+to_dn+")"
-| dedup Agent
+| dedup host, Agent
 | where to_dn!=""
 | sort + AgentE</query>
         <earliest>$tspan1.earliest$</earliest>
@@ -93,10 +93,10 @@
       <title>Activity</title>
       <single>
         <search>
-          <query>`default_index` sourcetype="3cx:queue_agent_logins" earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup idcallcent_ag_queuestatus
-| transaction q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
+          <query>`default_index` sourcetype="3cx:queue_agent_logins" earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup host, idcallcent_ag_queuestatus
+| transaction host, q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
 | eval login_time=strptime(mvindex(timeofupdate,0), "%Y-%m-%d %H:%M:%S"), logout_time=strptime(mvindex(timeofupdate,1), "%Y-%m-%d %H:%M:%S")
-| dedup agent_num, q_num, login_time
+| dedup host, agent_num, q_num, login_time
 | eval login_time=if(login_time&lt;$tkn_earliest_time$, $tkn_earliest_time$, login_time) | where login_time&lt;logout_time
 | eval duration=logout_time-login_time
 | search $hosts3$ $queue1$
@@ -122,9 +122,9 @@
 | eval ex = agent_fname+" "+agent_lname 
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
-| table q_name, q_num
+| table host, q_name, q_num
 | sort + q_name
-| dedup q_name
+| dedup host, q_name
 | rename q_name AS "Queue Name", q_num AS "Queue Number"</query>
           <earliest>$tspan1.earliest$</earliest>
           <latest>$tspan1.latest$</latest>
@@ -144,6 +144,7 @@
 | eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
+| dedup host, q_num, queuecall_id
 | stats count</query>
           <earliest>$tspan1.earliest$</earliest>
           <latest>$tspan1.latest$</latest>
@@ -159,6 +160,7 @@
 | eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced = 1
+| dedup host, q_num, queuecall_id
 | stats count</query>
           <earliest>$tspan1.earliest$</earliest>
           <latest>$tspan1.latest$</latest>
@@ -173,6 +175,7 @@
 | eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced = 0
+| dedup host, q_num, queuecall_id
 | stats count</query>
           <earliest>$tspan1.earliest$</earliest>
           <latest>$tspan1.latest$</latest>
@@ -188,6 +191,7 @@
 | eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced = 0 AND reason_failcode = 0
+| dedup host, q_num, queuecall_id
 | stats count</query>
           <earliest>$tspan1.earliest$</earliest>
           <latest>$tspan1.latest$</latest>
@@ -239,6 +243,7 @@
 | eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
+| dedup host, q_num, queuecall_id
 | timechart span=1h count
 | eval hour=strftime(_time,"%H") 
 | stats sum(count) as "Call Activity" by hour</query>
@@ -264,6 +269,7 @@
 | eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent AND isserviced=1
+| dedup host, q_num, queuecall_id
 | stats avg(tot_ringing_sec) as avgTT
 | eval avgTT = strftime(avgTT,"00:%M:%S")</query>
           <earliest>$tspan1.earliest$</earliest>
@@ -280,7 +286,8 @@
           <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
 | eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
-| where ex = Agent AND isserviced = 1 
+| where ex = Agent AND isserviced = 1
+| dedup host, q_num, queuecall_id 
 | stats avg(ts_servicing_sec) as avgTT
 | eval avgTT = strftime(avgTT,"00:%M:%S")</query>
           <earliest>$tspan1.earliest$</earliest>
@@ -297,7 +304,8 @@
           <query>`default_index` sourcetype="3cx:queuecalls" $hosts3$ $queue1$
 | eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
-| where ex = Agent AND isserviced = 1 
+| where ex = Agent AND isserviced = 1
+| dedup host, q_num, queuecall_id 
 | stats avg(tot_agent_polling_sec) as avgTT
 | eval avgTT = strftime(avgTT,"00:%M:%S")</query>
           <earliest>$tspan1.earliest$</earliest>
@@ -318,6 +326,7 @@
 | eval AgentName = agent_fname+" "+agent_lname
 | eval Ag = replace("$extNum$"," \(Ext.*","")
 | where AgentName = Ag
+| dedup host, q_num, queuecall_id
 | eval Status = if(isserviced="1", "Answered Call", if(reason_failcode="0", "Unanswered Call", "Failed Call"))
 | eval Duration = (ts_locating_sec+tot_ringing_sec+ts_servicing_sec)*1000
 | stats count by _time, Duration, AgentName, Status
@@ -347,12 +356,13 @@
 | eval ex = agent_fname+" "+agent_lname
 | eval Agent = replace("$extNum$"," \(Ext.*","")
 | where ex = Agent
+| dedup host, q_num, queuecall_id
 | eval Outcome = if(isserviced="1","Call was answered","Call was not answered")
 | eval formatTime = strftime(_time,"%b %d, %Y %I:%M:%S %p")
 | eval RingT = tostring(tot_ringing_sec,"duration") | rex field=RingT "(?&lt;RingTm&gt;.*\.\d)"
 | eval TalkT = ts_servicing | rex field=TalkT "(?&lt;TalkTm&gt;.*\.\d)"
 | rename TalkTm as "Talking (s)", RingTm as "Ringing (s)", queuecall_id as "Call ID", formatTime as "Time", queue_call_displayname as "From", q_num as "Queue"
-| table "Call ID", "Time", "From", "Queue", Agent, "Ringing (s)","Talking (s)", Outcome</query>
+| table host, "Call ID", "Time", "From", "Queue", Agent, "Ringing (s)","Talking (s)", Outcome</query>
           <earliest>$tspan1.earliest$</earliest>
           <latest>$tspan1.latest$</latest>
         </search>

@@ -150,10 +150,10 @@
 | timechart span=1h count by call_dir
 | eval Hour=strftime(_time,"%H") 
 | stats $tkn_aggregation_call$(*) as * by Hour
-| append [| search `default_index` sourcetype="3cx:queue_agent_logins" $hosts1$ earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup idcallcent_ag_queuestatus 
-| transaction q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
+| append [| search `default_index` sourcetype="3cx:queue_agent_logins" $hosts1$ earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup host, idcallcent_ag_queuestatus 
+| transaction host, q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
 | eval login_time=strptime(mvindex(timeofupdate,0), "%Y-%m-%d %H:%M:%S"), logout_time=strptime(mvindex(timeofupdate,1), "%Y-%m-%d %H:%M:%S")
-| dedup agent_num, login_time
+| dedup host, agent_num, login_time
 | where duration&gt;$tkn_agent_login_less_than$
 | eval time = mvrange(login_time,logout_time,"1h") | mvexpand time | where time&gt;=$tkn_earliest_time$ AND time&lt;=$tkn_latest_time$ | eval _time = time
 | timechart span=1h count
@@ -245,7 +245,7 @@
 | eval ans = if(call_is_answered = "f","Call was not answered", "Call was answered")
 | eval caller_number=mvindex(src_caller_number, 0, 0)
 | rename call_start_time as "Start Time", duration as Duration, ringing_dur as "Ringing (s)", talking_dur as "Talking (s)", caller_number as "Caller", call_is_answered as Answered, ans as "Call Outcome"
-| table "Start Time", "Caller", Duration, "Ringing (s)", "Talking (s)", "Call Outcome"
+| table host, call_id, "Start Time", "Caller", Duration, "Ringing (s)", "Talking (s)", "Call Outcome"
 | sort "Start Time" by DESC</query>
         </search>
         <option name="count">10</option>

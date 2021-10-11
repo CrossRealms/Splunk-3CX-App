@@ -2,7 +2,7 @@
   <label>Agent Logins</label>
   <description>View statistics and summaries for Agent login sessions</description>
   <search id="agent_login_list">
-    <query>`default_index` sourcetype="3cx:queue_agent_logins" is_loggedin_in_queue=t ($o_name$) ($queue_field$) | dedup agent_num | eval AgentE = agent_fname + " " + agent_lname + " (Ext."+agent_num+")" | eval Agent="Ext.".agent_num." - ".agent_fname." ".agent_lname | fields agent_num, AgentE, Agent</query>
+    <query>`default_index` sourcetype="3cx:queue_agent_logins" is_loggedin_in_queue=t ($o_name$) ($queue_field$) | dedup host, agent_num | eval AgentE = agent_fname + " " + agent_lname + " (Ext."+agent_num+")" | eval Agent="Ext.".agent_num." - ".agent_fname." ".agent_lname | fields host, agent_num, AgentE, Agent</query>
     <earliest>$time_field.earliest$</earliest>
     <latest>$time_field.latest$</latest>
     <done>
@@ -27,13 +27,13 @@
     </done>
   </search>
   <search id="agents_login_basesearch">
-    <query>`default_index` sourcetype="3cx:queue_agent_logins" earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup idcallcent_ag_queuestatus
-| transaction q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
+    <query>`default_index` sourcetype="3cx:queue_agent_logins" earliest=$tkn_extra_earliest_time$ latest=$tkn_extra_latest_time$ | dedup host, idcallcent_ag_queuestatus
+| transaction host q_num agent_num startswith="is_loggedin_in_queue=t" endswith="is_loggedin_in_queue=f" keepevicted=t | search eventcount=2
 | eval login_time=strptime(mvindex(timeofupdate,0), "%Y-%m-%d %H:%M:%S"), logout_time=strptime(mvindex(timeofupdate,1), "%Y-%m-%d %H:%M:%S")
-| dedup agent_num, q_num, login_time
+| dedup host, agent_num, q_num, login_time
 | eval login_time=if(login_time&lt;$tkn_earliest_time$, $tkn_earliest_time$, login_time) | where login_time&lt;logout_time
 | eval duration=logout_time-login_time
-| fields - _raw | fields _time, agent_*, duration, eventcount, host, idcallcent_ag_queu_status, is_loggedin_in_all_queues, is_loggedin_in_queue, login_time, logout_time, q_name, q_num, user_id, timeofupdate | table _time, agent_*, duration, eventcount, host, idcallcent_ag_queu_status, is_loggedin_in_all_queues, is_loggedin_in_queue, login_time, logout_time, q_name, q_num, user_id, timeofupdate</query>
+| fields - _raw | fields _time, agent_*, duration, eventcount, host, idcallcent_ag_queuestatus, is_loggedin_in_all_queues, is_loggedin_in_queue, login_time, logout_time, q_name, q_num, user_id, timeofupdate | table _time, agent_*, duration, eventcount, host, idcallcent_ag_queuestatus, is_loggedin_in_all_queues, is_loggedin_in_queue, login_time, logout_time, q_name, q_num, user_id, timeofupdate</query>
   </search>
   <search id="agents_login_timerange_finder_for_agent_login_timeline_panel">
     <query>| makeresults | addinfo</query>
@@ -90,7 +90,7 @@
       <fieldForLabel>fqname</fieldForLabel>
       <fieldForValue>q_num</fieldForValue>
       <search>
-        <query>`default_index` sourcetype="3cx:queuecalls" $o_name$ | dedup q_num | eval fqname = q_name+" ("+q_num+")" | sort + q_name</query>
+        <query>`default_index` sourcetype="3cx:queuecalls" $o_name$ | dedup host, q_num | eval fqname = q_name+" ("+q_num+")" | sort + q_name</query>
         <earliest>$time_field.earliest$</earliest>
         <latest>$time_field.latest$</latest>
       </search>
@@ -147,7 +147,7 @@
         <title>(in Hours)</title>
         <search base="agents_login_basesearch">
           <query>| search $queue_field$ $o_name$ $agnts$
-| dedup agent_num, login_time
+| dedup host, agent_num, login_time
 | eval Agent = agent_fname + " " + agent_lname
 | stats sum(duration) as duration by Agent
 | eval Time = round(duration/3600,2)
@@ -203,7 +203,7 @@
       <chart>
         <search base="agents_login_basesearch">
           <query>| search $queue_field$ $o_name$ $agnts$
-| dedup agent_num, login_time
+| dedup host, agent_num, login_time
 | eval Agent = agent_fname + " " + agent_lname
 | stats avg(duration) AS agg BY Agent
 | eval agg = round(agg/3600,2)
@@ -234,7 +234,7 @@
       <viz type="timeline_app.timeline">
         <search base="agents_login_basesearch_for_agent_timeline">
           <query>| search $queue_field$ $o_name$ $agnts$
-| dedup agent_num, login_time
+| dedup host, agent_num, login_time
 | eval Agent = agent_fname + " " + agent_lname
 | eval dur = duration*1000
 | stats count by login_time, dur, Agent
