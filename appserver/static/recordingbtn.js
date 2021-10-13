@@ -5,31 +5,54 @@ require([
     'splunkjs/mvc/tableview',
     'splunkjs/mvc/simplexml/ready!'
 ], function(_, $, mvc, TableView) {
-    // Translations from rangemap results to CSS class
+
+    var submittedTokens = mvc.Components.getInstance('submitted');
+
+    function callIdDrilldown(callId){
+        console.log("callIdDrilldown");
+        let earliestTime = submittedTokens.get('timeRange.earliest');
+        let latestTime = submittedTokens.get('timeRange.latest');
+        let link = `search?q=%60default_index%60%20sourcetype%3D%223cx%3Acalls%22%20call_id%3D${callId}&earliest=${earliestTime}&latest=${latestTime}`;
+        window.open(link, '_blank');
+    }
+    window.callIdDrilldown = callIdDrilldown;
+    function recordingButtonClick(link){
+        console.log("recordingButtonClick");
+        window.open(link, '_blank');
+    }
+    window.recordingButtonClick = recordingButtonClick;
+
     var TBRenderer = TableView.BaseCellRenderer.extend({
         canRender: function(cell) {
             // Only use the cell renderer for the range field
-            return cell.field === 'Recording';
+            return cell.field === 'call_id' || cell.field === 'Recording';
         },
         render: function($td, cell) {
             // Create the button with the URL to put in the cell
-            if(cell.value === null) {
-                $td.html('');
-            } else {
-                if(cell.value instanceof Array){
-                    let inner_html = '<a target="_blank" class="btn btn-primary" href='+cell.value[0]+'>Play Recording 1</a><br/>';
-                    for(let i=1; i<cell.value.length; i++){
-                        inner_html += cell.value[i]+'<br/>';
+            if(cell.field === 'call_id'){
+                $td.html('<a target="_blank" target="_blank" onClick="window.callIdDrilldown(\''+cell.value+'\')">'+cell.value+'</a>');
+            }
+            else if(cell.field === 'Recording'){
+                if(cell.value === null) {
+                    $td.html('');
+                } else {
+                    if(cell.value instanceof Array){
+                        let inner_html = '';
+                        for(let i=1; i<cell.value.length; i++){
+                            inner_html += '<a target="_blank" class="btn btn-primary" onClick="window.recordingButtonClick(\''+cell.value[i]+'\')">Play Recording ' + (i+1) + '</a><br/>';
+                        }
+                        $td.html(inner_html);
                     }
-                    $td.html(inner_html);
-                }
-                else{
-                    $td.html('<a target="_blank" class="btn btn-primary" href='+cell.value+'>Play Recording</a>');
+                    else{
+                        $td.html('<a target="_blank" class="btn btn-primary" onClick="window.recordingButtonClick(\''+cell.value+'\')">Play Recording</a>');
+                    }
                 }
             }
         }
     });
-    mvc.Components.get('callrep').getVisualization(function(tableView){
+
+    let table = mvc.Components.get('callrep');
+    table.getVisualization(function(tableView){
         // Register custom cell renderer, the table will re-render automatically
         tableView.addCellRenderer(new TBRenderer());
     });
