@@ -22,24 +22,19 @@
     <input type="multiselect" token="hosts3" searchWhenChanged="true">
       <label>Office Name</label>
       <choice value="*">All</choice>
-      <fieldForLabel>officeNames</fieldForLabel>
-      <fieldForValue>host</fieldForValue>
-      <search>
-        <query>`default_index`
-| lookup host_lookup.csv host OUTPUT hostname
-| eval officeNames = if(isnull(hostname),host,hostname)
-| dedup officeNames
-| table host, officeNames
-| sort + host</query>
-        <earliest>$tspan1.earliest$</earliest>
-        <latest>$tspan1.latest$</latest>
-      </search>
       <default>*</default>
       <initialValue>*</initialValue>
       <prefix>(</prefix>
       <suffix>)</suffix>
       <delimiter> OR </delimiter>
       <valuePrefix>host=</valuePrefix>
+      <fieldForLabel>officeNames</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>`3cx_host_filter_search`</query>
+        <earliest>$tspan1.earliest$</earliest>
+        <latest>$tspan1.latest$</latest>
+      </search>
     </input>
     <input type="multiselect" token="queue1" searchWhenChanged="true">
       <label>Queue(s)</label>

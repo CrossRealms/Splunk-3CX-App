@@ -3,7 +3,8 @@
   <description>Includes statistics for both queue and non-queue calls</description>
   <search id="all_calls_search">
     <query>`default_index` sourcetype="3cx:calls"
-| dedup host, call_id, seg_order | fields host, act_*, answer_time, call_*, dst_*, recording_url, seg_*, src_*
+| fields host, act_*, answer_time, call_*, dst_*, recording_url, seg_*, src_*, has_queue
+| dedup host, call_id, seg_order
 | sort 0 -call_id, + seg_order
 | stats latest(_time) as _time, first(call_dir) as f_call_dir, last(call_*) as l_call_*, list(*) as * by host, call_id | rename l_call_* as call_*, f_call_dir as call_dir
 </query>
@@ -37,21 +38,16 @@
         <choice value="*">All</choice>
         <valuePrefix>host=</valuePrefix>
         <delimiter> OR </delimiter>
-        <fieldForLabel>officeNames</fieldForLabel>
-        <fieldForValue>host</fieldForValue>
-        <search>
-          <query>`default_index`
-| lookup host_lookup.csv host OUTPUT hostname
-| eval officeNames = if(isnull(hostname),host,hostname)
-| dedup officeNames
-| table host, officeNames
-| sort + host</query>
-          <earliest>0</earliest>
-          <latest></latest>
-        </search>
         <initialValue>*</initialValue>
         <prefix>(</prefix>
         <suffix>)</suffix>
+        <fieldForLabel>officeNames</fieldForLabel>
+        <fieldForValue>host</fieldForValue>
+        <search>
+          <query>`3cx_host_filter_search`</query>
+          <earliest>$tOverview.earliest$</earliest>
+          <latest>$tOverview.latest$</latest>
+        </search>
       </input>
       <input type="dropdown" token="callDir" searchWhenChanged="true">
         <label>Call Direction</label>

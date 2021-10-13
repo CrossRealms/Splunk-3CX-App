@@ -3,7 +3,8 @@
   <description>Note: Not all calls have recordings.</description>
   <search id="all_calls_search">
     <query>`default_index` sourcetype="3cx:calls"
-| dedup host, call_id, seg_order | fields host, act_*, answer_time, call_*, dst_*, has_queue, recording_url, seg_*, src_*
+| fields host, act_*, answer_time, call_*, dst_*, recording_url, seg_*, src_*, has_queue
+| dedup host, call_id, seg_order
 | eval recording_url = "https://"+lower(host)+":5001/#/download_record/"+recording_url, src_recording_url = "https://"+lower(host)+":5001/#/download_record/"+src_recording_url, dst_recording_url = "https://"+lower(host)+":5001/#/download_record/"+dst_recording_url
 | eval recording_url = mvappend(recording_url, src_recording_url, dst_recording_url)
 | sort 0 -call_id, + seg_order
@@ -39,11 +40,7 @@
       <fieldForLabel>officeNames</fieldForLabel>
       <fieldForValue>host</fieldForValue>
       <search>
-        <query>`default_index` | dedup host
-| lookup host_lookup.csv host OUTPUT hostname
-| eval officeNames = if(isnull(hostname),host,hostname)
-| table host, officeNames
-| sort + host</query>
+        <query>`3cx_host_filter_search`</query>
         <earliest>$timeRange.earliest$</earliest>
         <latest>$timeRange.latest$</latest>
       </search>

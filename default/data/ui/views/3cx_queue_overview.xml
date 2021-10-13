@@ -4,6 +4,7 @@
   <search id="all_call_base_search">
     <query>
       `default_index` sourcetype="3cx:calls"
+| fields host, act_*, answer_time, call_*, dst_*, recording_url, seg_*, src_*, has_queue
 | dedup host, call_id, seg_order
 | eval q_num=case(dst_type=4, dst_dn, src_type=4, src_dn)
 | eval agent1=if(dst_type=0, dst_caller_number." - ".dst_display_name, "N/A"), agent2=if(src_type=0, src_caller_number." - ".src_display_name, "N/A"), agent=mvappend(agent1, agent2)
@@ -53,12 +54,7 @@
       <fieldForLabel>officeNames</fieldForLabel>
       <fieldForValue>host</fieldForValue>
       <search>
-        <query>`default_index`
-| lookup host_lookup.csv host OUTPUT hostname
-| eval officeNames = if(isnull(hostname),host,hostname)
-| dedup officeNames
-| table host, officeNames
-| sort + host</query>
+        <query>`3cx_host_filter_search`</query>
         <earliest>$time_overview.earliest$</earliest>
         <latest>$time_overview.latest$</latest>
       </search>

@@ -1,20 +1,6 @@
 <form version="1.1">
   <label>Agent Logins</label>
   <description>View statistics and summaries for Agent login sessions</description>
-  <search id="agent_login_list">
-    <query>`default_index` sourcetype="3cx:queue_agent_logins" is_loggedin_in_queue=t ($o_name$) ($queue_field$) | dedup host, agent_num | eval AgentE = agent_fname + " " + agent_lname + " (Ext."+agent_num+")" | eval Agent="Ext.".agent_num." - ".agent_fname." ".agent_lname | fields host, agent_num, AgentE, Agent</query>
-    <earliest>$time_field.earliest$</earliest>
-    <latest>$time_field.latest$</latest>
-    <done>
-      <set token="tkn_agents_search">$result.Agents$</set>
-    </done>
-  </search>
-  <search base="agent_login_list">
-    <query>| table Agent | stats values(Agent) as Agent | eval Agents=mvjoin(Agent, "\",\"") | eval Agents="\"".Agents."\"" </query>
-    <done>
-      <set token="tkn_agents_search">$result.Agents$</set>
-    </done>
-  </search>
   <search id="agents_login_timerange_finder">
     <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), extra_latest_time=info_max_time</query>
     <earliest>$time_field.earliest$</earliest>
@@ -64,19 +50,14 @@
       <initialValue>*</initialValue>
       <valuePrefix>"</valuePrefix>
       <delimiter>, </delimiter>
+      <valueSuffix>"</valueSuffix>
       <fieldForLabel>officeNames</fieldForLabel>
       <fieldForValue>host</fieldForValue>
       <search>
-        <query>`default_index`
-| lookup host_lookup.csv host OUTPUT hostname
-| eval officeNames = if(isnull(hostname),host,hostname)
-| dedup officeNames
-| table host, officeNames
-| sort + host</query>
+        <query>`3cx_host_filter_search`</query>
         <earliest>$time_field.earliest$</earliest>
         <latest>$time_field.latest$</latest>
       </search>
-      <valueSuffix>"</valueSuffix>
     </input>
     <input type="multiselect" token="queue_field" searchWhenChanged="true">
       <label>Queue(s)</label>
@@ -107,7 +88,7 @@
       <fieldForLabel>AgentE</fieldForLabel>
       <fieldForValue>agent_num</fieldForValue>
       <search base="agent_login_list">
-        <query>| table AgentE, agent_num | sort + AgentE</query>
+        <query>`default_index` sourcetype="3cx:queue_agent_logins" is_loggedin_in_queue=t ($o_name$) ($queue_field$) | dedup host, agent_num | eval AgentE = agent_fname + " " + agent_lname + " (Ext."+agent_num+")" | fields host, agent_num, AgentE | table AgentE, agent_num | sort + AgentE</query>
       </search>
       <valuePrefix>"</valuePrefix>
       <valueSuffix>"</valueSuffix>
