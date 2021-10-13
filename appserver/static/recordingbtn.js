@@ -9,7 +9,6 @@ require([
     var submittedTokens = mvc.Components.getInstance('submitted');
 
     function callIdDrilldown(callId){
-        console.log("callIdDrilldown");
         let earliestTime = submittedTokens.get('timeRange.earliest');
         let latestTime = submittedTokens.get('timeRange.latest');
         let link = `search?q=%60default_index%60%20sourcetype%3D%223cx%3Acalls%22%20call_id%3D${callId}&earliest=${earliestTime}&latest=${latestTime}`;
@@ -17,7 +16,6 @@ require([
     }
     window.callIdDrilldown = callIdDrilldown;
     function recordingButtonClick(link){
-        console.log("recordingButtonClick");
         window.open(link, '_blank');
     }
     window.recordingButtonClick = recordingButtonClick;
@@ -38,7 +36,7 @@ require([
                 } else {
                     if(cell.value instanceof Array){
                         let inner_html = '';
-                        for(let i=1; i<cell.value.length; i++){
+                        for(let i=0; i<cell.value.length; i++){
                             inner_html += '<a target="_blank" class="btn btn-primary" onClick="window.recordingButtonClick(\''+cell.value[i]+'\')">Play Recording ' + (i+1) + '</a><br/>';
                         }
                         $td.html(inner_html);
