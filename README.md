@@ -75,9 +75,9 @@ For data collection we need to setup Splunk DB Connect on Heavy Forwarder.
   * Click on Save.
 
 * Download the Splunk App For 3CX and extract the archive. 
-* From `default` directory of this App, copy the `db_inputs.conf.template` file to $SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_inputs.conf
-* Open the file in editor, in the `default` stanza replace the host value with the hostname you want to add for your forwarder.
-* Also update the date and time for tail_rising_column_init_ckpt_value parameter in all the inputs based on how long in the past you want to backfill the data.
+* From `default` directory of this App (splunk_app_3cx), copy the `db_inputs.conf.template` file to $SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_inputs.conf
+* Open the file in editor, in the `[default]` stanza replace the host value with the hostname you want to add for your forwarder.
+* Also update the date and time for tail_rising_column_init_ckpt_value parameter in all the input stanzas based on how long in the past you want to backfill the data.
   * Please use `YY-mm-dd HH:MM:SS.000` date-time format.
   * Example: `tail_rising_column_init_ckpt_value = {"value":"2021-09-21 00:00:00.000","columnType":93}`
   * Please do not go long in the past as all queries will timed-out and you will never be able to collect the data.
