@@ -136,8 +136,7 @@ Version 2.0.0
 
 
 Upgrade guide from 1.2.x to 2.0.0
-* Remove following inputs from Splunk DB Connect App.
-  * calls_view, call_report, cl_party_info
+* Remove existing 3CX related data inputs on the DB connect.
 * Create following new inputs directly from db_inputs.conf file.
   * 3cx_calls
   * Take reference from db_inputs.conf.template file. Follow the `CONFIGURATION` > `Data Collection` guide.
