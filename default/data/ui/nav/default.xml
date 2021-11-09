@@ -1,7 +1,7 @@
 <nav search_view="search" color="#464646">
 	<view name="3cx_overview" default="true"/>
 	<view name="3cx_queue_overview" />
-	<view name="3cx_queue_logins" />
+	<view name="3cx_agent_logins" />
 	<view name="3cx_queue_extensions" />
 	<view name="3cx_call_reports" />
 	<view name="search" />
