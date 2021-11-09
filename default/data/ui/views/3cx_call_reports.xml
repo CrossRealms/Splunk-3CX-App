@@ -40,7 +40,7 @@
       <fieldForLabel>officeNames</fieldForLabel>
       <fieldForValue>host</fieldForValue>
       <search>
-        <query>`3cx_host_filter_search`</query>
+        <query>| `3cx_host_filter_search`</query>
         <earliest>$timeRange.earliest$</earliest>
         <latest>$timeRange.latest$</latest>
       </search>
