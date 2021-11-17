@@ -4,7 +4,7 @@
 ## <provide host-name for 3CX> -> Replace with 3CX host name
 ##
 ## Also update the date and time for tail_rising_column_init_ckpt_value parameter in all the inputs based on how long in the past you want to backfill the data.
-##  * Please use `YY-mm-dd HH:MM:SS.000` date-time format.
+##  * Please use `YYYY-mm-dd HH:MM:SS.000` date-time format.
 ##  * Example: `tail_rising_column_init_ckpt_value = {"value":"2021-09-21 00:00:00.000","columnType":93}`
 ##  * Please do not go long in the past as all queries will timed-out and you will never be able to collect the data.
 ###########################################################################
@@ -25,7 +25,7 @@ input_timestamp_column_number = 9
 interval = */15 * * * *
 mode = rising
 tail_rising_column_name = seg_end_time
-tail_rising_column_init_ckpt_value = {"value":"YY-mm-dd HH:MM:SS.000","columnType":93}
+tail_rising_column_init_ckpt_value = {"value":"YYYY-mm-dd HH:MM:SS.000","columnType":93}
 query = SELECT calls.id AS call_id, calls.start_time as call_start_time, calls.end_time as call_end_time, calls.is_answered as call_is_answered, calls.ringing_dur as call_ringing_dur, calls.talking_dur as call_talking_dur, calls.q_wait_dur as call_q_wait_dur, \
 segments.id as seg_id, segments.start_time as seg_start_time, segments.end_time as seg_end_time, segments.seq_group as seg_group, segments.seq_order as seg_order, segments.type as seg_type, segments.action_id as seg_action_id, segments.action_party_id as seg_action_party_id, \
 src_participants.role as src_role, src_participants.is_inbound as src_is_inbound, src_participants.end_status as src_end_status, src_participants.forward_reason as src_forward_reason, src_participants.failure_reason as src_failure_reason, src_participants.answer_time as answer_time, src_participants.recording_url as src_recording_url, \
@@ -56,7 +56,7 @@ input_timestamp_column_number = 2
 interval = */15 * * * *
 mode = rising
 tail_rising_column_name = timeofupdate
-tail_rising_column_init_ckpt_value = {"value":"YY-mm-dd HH:MM:SS.000","columnType":93}
+tail_rising_column_init_ckpt_value = {"value":"YYYY-mm-dd HH:MM:SS.000","columnType":93}
 query = SELECT queue_status.idcallcent_ag_queuestatus as idcallcent_ag_queuestatus, (queue_status.timeofupdate AT TIME ZONE 'UTC')::timestamptz as timeofupdate, queue_status.is_loggedin_in_queue as is_loggedin_in_queue, queue_status.is_loggedin_in_allqueues as is_loggedin_in_allqueues, \
 queue_status.q_num as q_num, info.name as q_name, \
 queue_status.ag_num as agent_num, users.iduser as user_id, users.firstname as agent_fname, users.lastname as agent_lname \
@@ -82,7 +82,7 @@ input_timestamp_column_number = 3
 interval = */15 * * * *
 mode = rising
 tail_rising_column_name = end_time
-tail_rising_column_init_ckpt_value = {"value":"YY-mm-dd HH:MM:SS.000","columnType":93}
+tail_rising_column_init_ckpt_value = {"value":"YYYY-mm-dd HH:MM:SS.000","columnType":93}
 query = SELECT queue_call.idcallcent_queuecalls as queuecall_id, queue_call.q_num as q_num, (queue_call.time_start AT TIME ZONE 'UTC')::timestamptz as start_time, (queue_call.time_end AT TIME ZONE 'UTC')::timestamptz as end_time, \
 queue_call.ts_waiting as ts_waiting, queue_call.ts_polling as ts_polling, queue_call.ts_servicing as ts_servicing, queue_call.ts_locating as ts_locating, \
 queue_call.count_polls as count_polls, queue_call.count_dialed as count_dialed, queue_call.count_rejected as count_rejected, queue_call.count_dials_timed as count_dials_timed, \
