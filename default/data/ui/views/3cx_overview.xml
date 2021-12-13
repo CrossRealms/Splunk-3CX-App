@@ -12,7 +12,7 @@
     <latest>$tOverview.latest$</latest>
   </search>
   <search id="agents_login_timerange_finder">
-    <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), extra_latest_time=info_max_time</query>
+    <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), info_max_time=if(info_max_time="+Infinity", relative_time(now(), "+7d"), info_max_time), extra_latest_time=info_max_time | fillnull extra_earliest_time value=0</query>
     <earliest>$tOverview.earliest$</earliest>
     <latest>$tOverview.latest$</latest>
     <done>

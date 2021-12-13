@@ -2,7 +2,7 @@
   <label>Agent Logins</label>
   <description>View statistics and summaries for Agent login sessions</description>
   <search id="agents_login_timerange_finder">
-    <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), extra_latest_time=info_max_time</query>
+    <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), info_max_time=if(info_max_time="+Infinity", relative_time(now(), "+7d"), info_max_time), extra_latest_time=info_max_time | fillnull extra_earliest_time value=0</query>
     <earliest>$time_field.earliest$</earliest>
     <latest>$time_field.latest$</latest>
     <done>
@@ -87,8 +87,8 @@
       <delimiter>, </delimiter>
       <fieldForLabel>AgentE</fieldForLabel>
       <fieldForValue>agent_num</fieldForValue>
-      <search base="agent_login_list">
-        <query>`default_index` sourcetype="3cx:queue_agent_logins" is_loggedin_in_queue=t ($o_name$) ($queue_field$) | dedup host, agent_num | eval AgentE = agent_fname + " " + agent_lname + " (Ext."+agent_num+")" | fields host, agent_num, AgentE | table AgentE, agent_num | sort + AgentE</query>
+      <search base="agents_login_basesearch">
+        <query>| eval AgentE = agent_fname + " " + agent_lname + " (Ext."+agent_num+")" | dedup agent_num | table AgentE, agent_num | sort + AgentE</query>
       </search>
       <valuePrefix>"</valuePrefix>
       <valueSuffix>"</valueSuffix>
