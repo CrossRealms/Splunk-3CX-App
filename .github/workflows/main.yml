@@ -22,45 +22,11 @@ jobs:
     runs-on: "ubuntu-latest"
     
     steps:
-      # ...
-      - name: "Generate App Build"
-        run: |
-          echo "Started generating build."
-      
-      - name: Extract branch name
-        shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        id: extract_branch
-      
-      - uses: actions/checkout@v2
+      - uses: VatsalJagani/splunk-app-action@v0.2
         with:
-          ref: ${{ steps.extract_branch.outputs.branch }}
-          path: splunk_app_3cx
-            
-      - name: "Generate Build"
-        run: |
-          cd splunk_app_3cx
-          rm -rf .git
-          rm -rf .github
-          cd ..
-          find splunk_app_3cx -type f -exec chmod 644 '{}' \;
-          find splunk_app_3cx -type d -exec chmod 755 '{}' \;
-          tar -czf splunk_app_3cx.tgz splunk_app_3cx
-          
-      - uses: actions/upload-artifact@v2
-        with:
-          name: "build"
-          path: |
-            splunk_app_3cx.tgz
-      
-      - uses: splunk/appinspect-cli-action@v1
-        with:
-          app_path: 'splunk_app_3cx.tgz'
-          result_file: 'app-appinspect-mode-test.json'
-
-      - uses: actions/upload-artifact@v2
-        if: always()
-        with:
-          name: "app_inspect_reports"
-          path: |
-            app-appinspect-mode-test.json
+          app_build_name: "splunk_app_3cx"
+          splunkbase_username: ${{ secrets.SPLUNKBASE_USERNAME }}
+          splunkbase_password: ${{ secrets.SPLUNKBASE_PASSWORD }}
+        env:
+          SPLUNK_APP_ACTION_1: "rm -rf .github"
+          SPLUNK_APP_ACTION_2: "rm -rf .git"
