@@ -15,7 +15,7 @@
     <latest>$time_overview.latest$</latest>
   </search>
   <search id="agents_login_timerange_finder">
-    <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, "-1d"), extra_latest_time=info_max_time</query>
+    <query>| makeresults | addinfo | eval extra_earliest_time=relative_time(info_min_time, `3cx_max_agent_login_time`), extra_latest_time=info_max_time</query>
     <earliest>$time_overview.earliest$</earliest>
     <latest>$time_overview.latest$</latest>
     <done>
