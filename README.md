@@ -22,7 +22,7 @@ Some example reports are:
 * Full details on Queue Extension activities
 
 
-
+## App Info
 * Author - CrossRealms International Inc.
 * Version - 2.0.0
 * Build - 1
@@ -230,4 +230,4 @@ SUPPORT
 * Contact - CrossRealms International Inc.
   * US: +1-312-2784445
 * License Agreement - https://d38o4gzaohghws.cloudfront.net/static/misc/eula.html
-* Copyright - Copyright Crossrealms Internationals, 2020
+* Copyright - Copyright CrossRealms Internationals, 2020
