@@ -6,11 +6,25 @@ https://splunkbase.splunk.com/app/5155/
 
 OVERVIEW
 --------
-The Splunk app for 3CX Phone Systems is used to present the 3CX Phone Systems information into Splunk. There are 5 dashboards named Overview and Queue Summary, Agent Logins, Queue Extensions and Call Logs. There are tabs for Reports and Alerts. User can schedule pre-defined report creation and can get it over email. Alerts are generated when there is no data ingested for particular sourcetype.
+The Splunk app for 3CX Phone Systems is the reporting App for 3CX calls, queues, agent logins, etc.
+The reporting on 3CX is not really good so managers and directors need a better reporting tool for 3CX. This Splunk App provides exactly that. The App contains information around call details, queue summary, agent logins, queue extension details, etc.
+Some example reports are:
+* All calls details (Call logs)
+* No. of answered calls vs unanswered calls
+* No. of answered calls vs unanswered on calls on selected queue
+* Hourly heat map of calls to identify which time of a day requires more attention
+* Call distribution for each queue
+* SLA breach on queues
+* Daily Call Expectancy vs Agent Logins
+* Agent average time spent logged in per Queue
+* Agent Login Summary
+* Timeline of Agent logins
+* Full details on Queue Extension activities
+
 
 
 * Author - CrossRealms International Inc.
-* Version - 1.2.1
+* Version - 2.0.0
 * Build - 1
 * Creates Index - False
 * Compatible with:
@@ -55,11 +69,11 @@ For data collection we need to setup Splunk DB Connect on Heavy Forwarder.
 * In Splunk DB Connect, access the Configuration > Databases > Identities tab and click New Identity.
 * Complete the fields as mentioned below.
   * Identity Name : 3CX
-  * username: phonesystem
+  * username: `phonesystem`
   * Password needs to be fetched from the 3CX ini file.</br>
   Location of the file in various platform is as below.</br></br>
-  For Windows : C:\Program Files\3CX Phone System\Bin\3CXPhoneSystem.ini</br>
-  For Linux: /var/lib/3cxpbx/Bin/3CXPhoneSystem.ini
+  For Windows : `C:\Program Files\3CX Phone System\Bin\3CXPhoneSystem.ini`</br>
+  For Linux: `/var/lib/3cxpbx/Bin/3CXPhoneSystem.ini`
   * From this file look for the stanza name `DbAdminREADONLY`. Fetch the password from the stanza and fill it in the password field of Identity Wizard.
 * After Creating Identity Create DB Connections with 3CX PostgresQL.
 * In Splunk DB Connect, click the Configuration > Databases > Connections tab.
@@ -67,16 +81,20 @@ For data collection we need to setup Splunk DB Connect on Heavy Forwarder.
 * On the New Connection page, complete the following fields:
   * Connection Name: 3CX
   * Identity: Choose the identity 3CX Created in first step.
-  * Connection Type: Postgress
+  * Connection Type: Postgres
   * Timezone: Select Timezone if required.
   * Host: Host of 3CX
-  * Port: Port of postgress database from 3CX system. (Defaults to 5480)
+  * Port: Port of postgres database from 3CX system. (Defaults to `5432` or try 5480)
   * Default Database: database_single (Default database for 3CX system)
   * Click on Save.
 
 * Download the Splunk App For 3CX and extract the archive. 
-* From `default` directory of this App, copy the `db_inputs.conf.template` file to $SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_inputs.conf
-* Open the file in editor, in the `default` stanza replace the host value with the hostname you want to add for your forwarder.
+* From `default` directory of this App (splunk_app_3cx), copy the `db_inputs.conf.template` file to $SPLUNK_HOME/etc/apps/splunk_app_db_connect/local/db_inputs.conf
+* Open the file in editor, in the `[default]` stanza replace the host value with the hostname you want to add for your forwarder.
+* Also, update the date and time for tail_rising_column_init_ckpt_value parameter in all the input stanzas based on how long in the past you want to backfill the data.
+  * Please use `YYYY-mm-dd HH:MM:SS.000` date-time format.
+  * Example: `tail_rising_column_init_ckpt_value = {"value":"2021-09-21 00:00:00.000","columnType":93}`
+  * Please do not go long in the past as all queries will timed-out and you will never be able to collect the data.
 * Restart the Splunk.
 
 
@@ -105,6 +123,55 @@ KNOWN LIMITATION
 
 RELEASE NOTES
 -------------
+Version 2.0.0
+* Removed following inputs from the db_inputs.conf.template file.
+  * calls_view, call_report, cl_party_info, queuecalls_view, agent_login_export
+* Added below new inputs in the db_inputs.conf.template file.
+  * 3cx_calls, 3cx_agent_login, 3cx_queuecalls
+* Database SQL queries updated with the new inputs.
+  * Issue resolved: Updated SQL queries to resolve calls missing issue and agents login missing issue.
+  * Updated queries for data collection to enhanced for queries performance.
+
+* Added proper field extraction in props.conf for search queries simplification.
+
+* All Dashboards:
+  * Issues Fixed: Calls count mismatch issue. Missing agent login data issue.
+  * Through-out the app dedup with host along-side the call_id, so now that will not strip calls having same call_id from 2 different 3cx systems (to show accurate data).
+  * All dashboard now uses the new data sourcetypes collected with the new DB Connect inputs added.
+  * Filters re-ordered properly.
+  * Used time-range picker to populate all input dropdown results. Improves performance and shows more accurate data.
+  * Added base-search queries to load dashboard faster and to significantly reduce load-time when changing input filter in the dashboards.
+  * Improved search queries performance.
+
+* Agent Logins
+  * Removed unused dashboard: "Agent Queue Logins" (3cx_queue_logins.xml). Please use "Agent Logins" dashboard instead.
+  * Added appropriated filters on the dashboard.
+  * Removed reports with incorrect information.
+  * Added new reports.
+
+* Call Logs Dashboard:
+  * Added filter for answered call vs unanswered call.
+  * Added a lot more important fields to look at for more insights.
+  * Improved drilldown search on the table.
+
+* Removed all reports. Use dashboards instead.
+  * Log for all Calls, Agent Login Timeline, Data Not Being Received: Call Report, Data Not Being Received: Agent Logins, Data Not Being Received: Calls View, Data Not Being Received: Queue Calls View, Data Not Being Received: Cl Party Info, Top 10 Agents with Most Time Logged In, Calls Volume per Queue, Calls Summary for each Agent, Agent Logins Summary, Calls Summary for each Queue, Agent Logins Call Summary
+
+* Removed unused lookups: nodata_agentlogins.csv, nodata_callreport.csv, nodata_callview.csv, no_data_clpartyinfo.csv, nodata_queuecallsview.csv
+
+
+Upgrade guide from 1.2.x to 2.0.0
+* Remove existing 3CX related data inputs on the DB connect.
+  * calls_view, call_report, cl_party_info, queuecalls_view, agent_login_export
+* Create following new inputs directly from db_inputs.conf file.
+  * 3cx_calls, 3cx_agent_login, 3cx_queuecalls
+  * Take reference from db_inputs.conf.template file. Follow the `CONFIGURATION` > `Data Collection` guide.
+  * Please make sure to update the host name value and checkpoint values for all the data inputs as per the guidance in db_inputs.conf.template file.
+* All dashboard has been updated, so if you have your own updated version of dashboard in local directory you would not see the new dashboard. Remove the local version to see the updated dashboards.
+* FYI, Reports and Alerts have been removed, use dashboard instead.
+
+
+
 Version 1.2.1
 * Minor Changes
   * Changes to make compatible with Splunk AppInspect

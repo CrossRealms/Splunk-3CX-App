@@ -1,7 +1,34 @@
-<form script="recordingbtn.js" version="1.1">
+<form version="1.1" script="recordingbtn.js">
   <label>Call Log</label>
   <description>Note: Not all calls have recordings.</description>
+  <search id="all_calls_search">
+    <query>`default_index` sourcetype="3cx:calls"
+| fields host, act_*, answer_time, call_*, dst_*, recording_url, seg_*, src_*, has_queue
+| dedup host, call_id, seg_order
+| eval recording_url = "https://"+lower(host)+":5001/#/download_record/"+recording_url, src_recording_url = "https://"+lower(host)+":5001/#/download_record/"+src_recording_url, dst_recording_url = "https://"+lower(host)+":5001/#/download_record/"+dst_recording_url
+| eval recording_url = mvappend(recording_url, src_recording_url, dst_recording_url)
+| sort 0 -call_id, + seg_order
+| stats latest(_time) as _time, first(call_dir) as f_call_dir, last(call_*) as l_call_*, list(*) as * by host, call_id | rename l_call_* as call_*, f_call_dir as call_dir
+</query>
+    <earliest>$timeRange.earliest$</earliest>
+    <latest>$timeRange.latest$</latest>
+  </search>
+  <search base="all_calls_search" id="internal_external_number_search">
+    <query>
+      | eval all_numbers=mvappend(dst_caller_number, src_caller_number) 
+| fields all_numbers | mvexpand all_numbers | dedup all_numbers | table all_numbers
+| rex field=all_numbers "^(?&lt;external_number&gt;\d+)$" 
+| eval internal_number=if(isnull(external_number), all_numbers, null())
+    </query>
+  </search>
   <fieldset submitButton="false">
+    <input type="time" token="timeRange" searchWhenChanged="true">
+      <label>Time Span</label>
+      <default>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
     <input type="multiselect" token="hosts4" searchWhenChanged="true">
       <label>Office Name</label>
       <choice value="*">All</choice>
@@ -13,14 +40,9 @@
       <fieldForLabel>officeNames</fieldForLabel>
       <fieldForValue>host</fieldForValue>
       <search>
-        <query>`default_index`
-| lookup host_lookup.csv host OUTPUT hostname
-| eval officeNames = if(isnull(hostname),host,hostname)
-| dedup officeNames
-| table host, officeNames
-| sort + host</query>
-        <earliest>0</earliest>
-        <latest></latest>
+        <query>| `3cx_host_filter_search`</query>
+        <earliest>$timeRange.earliest$</earliest>
+        <latest>$timeRange.latest$</latest>
       </search>
     </input>
     <input type="multiselect" token="iext" searchWhenChanged="true">
@@ -28,59 +50,38 @@
       <choice value="*">All</choice>
       <default>*</default>
       <initialValue>*</initialValue>
-      <fieldForLabel>ext</fieldForLabel>
-      <fieldForValue>extn</fieldForValue>
-      <search>
-        <query>`default_index` sourcetype="3cx:call_report"
-| where dst_type=0 OR src_type=0
-| eval dst_display_name=if(isnull(dst_display_name), " ", dst_display_name)
-| eval src_display_name=if(isnull(src_display_name), " ", src_display_name)
-| eval ext = if(dst_type=0, dst_display_name+" ("+dst_caller_number+")", src_display_name+" ("+src_caller_number+")")
-| eval extn = if(dst_type=0, dst_caller_number, src_caller_number)
-| dedup extn | sort + ext
-| table ext, extn</query>
-        <earliest>-1y</earliest>
-        <latest>now</latest>
+      <fieldForLabel>internal_number</fieldForLabel>
+      <fieldForValue>internal_number</fieldForValue>
+      <search base="internal_external_number_search">
+        <query>| dedup internal_number | table internal_number</query>
       </search>
       <prefix>(</prefix>
       <suffix>)</suffix>
       <valuePrefix>"</valuePrefix>
       <valueSuffix>"</valueSuffix>
-      <delimiter> OR </delimiter>
+      <delimiter>, </delimiter>
     </input>
     <input type="multiselect" token="exnums" searchWhenChanged="true">
       <label>External Numbers</label>
       <choice value="*">All</choice>
       <default>*</default>
       <initialValue>*</initialValue>
-      <fieldForLabel>externum</fieldForLabel>
-      <fieldForValue>externum</fieldForValue>
-      <search>
-        <query>`default_index` sourcetype="3cx:call_report" (dst_type=1 OR dst_type=13) (src_type=1)
-| eval externum = if(src_type=1,src_caller_number,dst_caller_number)
-| dedup externum
-| table externum</query>
-        <earliest>-1y</earliest>
-        <latest>now</latest>
+      <fieldForLabel>external_number</fieldForLabel>
+      <fieldForValue>external_number</fieldForValue>
+      <search base="internal_external_number_search">
+        <query>| dedup external_number | table external_number</query>
       </search>
       <prefix>(</prefix>
       <suffix>)</suffix>
       <valuePrefix>"</valuePrefix>
       <valueSuffix>"</valueSuffix>
-      <delimiter> OR </delimiter>
+      <delimiter>, </delimiter>
     </input>
     <input type="text" token="pcallid" searchWhenChanged="true">
       <label>Call ID</label>
       <default>*</default>
       <prefix>call_id=</prefix>
       <initialValue>*</initialValue>
-    </input>
-    <input type="time" token="tspan1" searchWhenChanged="true">
-      <label>Time Span</label>
-      <default>
-        <earliest>-7d@h</earliest>
-        <latest>now</latest>
-      </default>
     </input>
     <input type="checkbox" token="qcallopt" searchWhenChanged="true">
       <label></label>
@@ -93,8 +94,8 @@
       <valuePrefix>has_queue=</valuePrefix>
       <delimiter> OR </delimiter>
     </input>
-    <input type="checkbox" token="calldire" searchWhenChanged="true">
-      <label></label>
+    <input type="checkbox" token="tkn_call_dir" searchWhenChanged="true">
+      <label>Call Direction</label>
       <choice value="Inbound">Inbound Calls</choice>
       <choice value="Outbound">Outbound Calls</choice>
       <choice value="Internal">Internal</choice>
@@ -106,37 +107,30 @@
       <valuePrefix>"</valuePrefix>
       <valueSuffix>"</valueSuffix>
     </input>
+    <input type="checkbox" token="tkn_is_call_answered">
+      <label>Call Answered?</label>
+      <choice value="t">Yes</choice>
+      <choice value="f">No</choice>
+      <default>t,f</default>
+      <prefix>call_is_answered IN (</prefix>
+      <suffix>)</suffix>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter>, </delimiter>
+    </input>
   </fieldset>
   <row>
     <panel>
       <title>Calls Timetable</title>
       <table id="callrep">
-        <search>
-          <query>`default_index` sourcetype="3cx:call_report" 
-$hosts4$ $iext$ $exnums$ ($pcallid$) $qcallopt$ 
-| dedup call_id, seq_order | sort 0 -call_id, + seq_order
-| eval call_dir = case((dst_type=1 OR dst_type=13), "Outbound", src_type=1, "Inbound", (src_type=0 AND dst_type=0), "Internal")
-| eval call_start_time = strftime(strptime(call_start_time,"%Y-%m-%d %H:%M:%S"),"%m/%d/%Y %I:%M:%S %p%z")
-| eval recording_url = if(isnull(recording_url), "NOREC", recording_url) 
-| eval rec_url = replace(replace(replace(replace(replace(replace(replace(recording_url, "\)", "%2529"), "\(", "%2528"), " ", "%2520"), "\]", "%255D"), "\[", "%255B"), "%3A", "%25253A"), "\/", "%252F")
-| eval hst = lower(host)
-| eval rec_link = if(rec_url="NOREC",rec_url,"https://"+hst+":5001/#/download_record/"+rec_url)
-| eval dst_display_name=if(isnull(dst_display_name), dst_caller_number, dst_display_name)
-| eval src_display_name=if(isnull(src_display_name), src_caller_number, src_display_name)
-| rename call_id as "Call ID", call_start_time as "Call Time", rec_link as Recording
-| stats first(call_dir) as call_dir, list(seq_order) as Sequence, list(start_time) as "Start Time", list(end_time) as "End Time", list(src_caller_number) as "Source Number", list(src_display_name) as "Source Name", list(dst_caller_number) as "Dest. Number", list(dst_display_name) as "Dest. Name", list(action) as "Action" by "Call ID", "Call Time", Recording
-| eval call_dir=if(isnull(call_dir), "Other", call_dir)
-| search call_dir IN $calldire$ | fields - call_dir
-| sort 0 - "Call ID", + seq_order</query>
-          <earliest>$tspan1.earliest$</earliest>
-          <latest>$tspan1.latest$</latest>
+        <search base="all_calls_search">
+          <query>| search $hosts4$ (src_caller_number IN $iext$ OR dst_caller_number IN $iext$) (src_caller_number IN $exnums$ OR dst_caller_number IN $exnums$) ($pcallid$) $qcallopt$ call_dir IN $tkn_call_dir$ $tkn_is_call_answered$
+| table host, call_id, call_dir, call_start_time, call_end_time, call_is_answered, call_ringing_dur, call_talking_dur, seg_start_time, answer_time, seg_end_time, src_caller_number, src_display_name, dst_caller_number, dst_display_name, has_queue, recording_url, seg_action_id, act_caller_number
+| rename recording_url as Recording</query>
         </search>
         <option name="count">25</option>
-        <option name="drilldown">cell</option>
+        <option name="drilldown">none</option>
         <option name="refresh.display">progressbar</option>
-        <drilldown>
-          <link target="_blank">$click.value2|n$</link>
-        </drilldown>
       </table>
     </panel>
   </row>
