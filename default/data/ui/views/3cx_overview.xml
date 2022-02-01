@@ -213,7 +213,7 @@
         <search>
           <query>`default_index` sourcetype="3cx:queuecalls" $hosts1$
 | dedup host, queuecall_id
-| eval breaches = if(tot_ringing_sec&gt;30,1,0)
+| eval breaches = if(tot_ringing_sec&gt;$slatime$,1,0)
 | chart sum(breaches) as "SLA Breaches" by host, q_name</query>
           <earliest>$tOverview.earliest$</earliest>
           <latest>$tOverview.latest$</latest>
