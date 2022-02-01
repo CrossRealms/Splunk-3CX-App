@@ -332,8 +332,8 @@ $tkn_only_internal_call_seq$
       <input type="dropdown" token="savgs" searchWhenChanged="true">
         <label></label>
         <choice value="tot_ringing_sec">Average Customer Ring Time</choice>
-        <choice value="tot_servicing_sec">Average Customer Talk Time</choice>
-        <choice value="tot_polling_sec">Average Customer Poll Time</choice>
+        <choice value="ts_servicing_sec">Average Customer Talk Time</choice>
+        <choice value="ts_polling_sec">Average Customer Poll Time</choice>
         <default>tot_ringing_sec</default>
         <initialValue>tot_ringing_sec</initialValue>
       </input>
