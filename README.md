@@ -24,7 +24,7 @@ Some example reports are:
 
 ## App Info
 * Author - CrossRealms International Inc.
-* Version - 2.0.0
+* Version - 2.0.1
 * Build - 1
 * Creates Index - False
 * Compatible with:
@@ -123,6 +123,11 @@ KNOWN LIMITATION
 
 RELEASE NOTES
 -------------
+Version 2.0.1
+* Fixed the filter of SLA on the Overview dashboard.
+* Fixed the filter of "Average Durations" on the Queue Summary dashboard.
+
+
 Version 2.0.0
 * Removed following inputs from the db_inputs.conf.template file.
   * calls_view, call_report, cl_party_info, queuecalls_view, agent_login_export
@@ -223,6 +228,7 @@ CONTRIBUTORS
 * Preston Carter
 * Ahad Ghani
 * Vatsal Jagani
+* Mahir Chavda
 
 
 SUPPORT
@@ -230,4 +236,4 @@ SUPPORT
 * Contact - CrossRealms International Inc.
   * US: +1-312-2784445
 * License Agreement - https://d38o4gzaohghws.cloudfront.net/static/misc/eula.html
-* Copyright - Copyright CrossRealms Internationals, 2020
+* Copyright - Copyright CrossRealms Internationals, 2022
