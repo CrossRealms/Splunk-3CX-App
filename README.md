@@ -33,6 +33,13 @@ Some example reports are:
    * Browser: Google Chrome, Mozilla Firefox, Safari
 
 
+## What's inside the App
+
+* No of XML Dashboards: **5**
+* Approx Total Viz(Charts/Tables/Map) in XML dashboards: **45**
+* No of Static CSV Lookup Files: **1**
+
+
 
 TOPOLOGY AND SETTING UP SPLUNK ENVIRONMENT
 ------------------------------------------
