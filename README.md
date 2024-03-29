@@ -24,11 +24,11 @@ Some example reports are:
 
 ## App Info
 * Author - CrossRealms International Inc.
-* Version - 2.0.1
+* Version - 2.0.2
 * Build - 1
 * Creates Index - False
 * Compatible with:
-   * Splunk Enterprise version: 8.0, 7.3, 7.2 and 7.1
+   * Splunk Enterprise version: 9.2, 9.1, 9.0, 8.2, 8.1
    * OS: Platform independent
    * Browser: Google Chrome, Mozilla Firefox, Safari
 
@@ -130,6 +130,9 @@ KNOWN LIMITATION
 
 RELEASE NOTES
 -------------
+Version 2.0.2
+* Updated the behavior of the multi-select input (Selecting any item will automatically deselect "All" and selecting "All" will deselect all other options.)
+
 Version 2.0.1
 * Fixed the filter of SLA on the Overview dashboard.
 * Fixed the filter of "Average Durations" on the Queue Summary dashboard.
@@ -236,6 +239,7 @@ CONTRIBUTORS
 * Ahad Ghani
 * Vatsal Jagani
 * Mahir Chavda
+* Hardik Dholariya
 
 
 SUPPORT
@@ -243,4 +247,4 @@ SUPPORT
 * Contact - CrossRealms International Inc.
   * US: +1-312-2784445
 * License Agreement - https://d38o4gzaohghws.cloudfront.net/static/misc/eula.html
-* Copyright - Copyright CrossRealms Internationals, 2022
+* Copyright - Copyright CrossRealms Internationals, 2024
