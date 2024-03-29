@@ -23,5 +23,5 @@ jobs:
           to_make_permission_changes: true
           splunkbase_username: ${{ secrets.SPLUNKBASE_USERNAME }}
           splunkbase_password: ${{ secrets.SPLUNKBASE_PASSWORD }}
-          app_utilities: "whats_in_the_app"
+          app_utilities: "whats_in_the_app, common_js_utilities"
           my_github_token: ${{ secrets.MY_GITHUB_TOKEN }}
