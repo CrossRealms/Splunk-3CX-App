@@ -2,6 +2,7 @@
 
 
 ## Archive Notice
+This App has been archived as the 3CX Splunk integration is no longer working with the latest 3CX releases after 3CX version 20.x. Below is the offboarding document. 
  
 ### 3CX Splunk Integration Offboarding Process
 
@@ -15,6 +16,9 @@
 * Remove **3cx** index from the indexers
   * If it's non-clustered environment then run: **/opt/splunk/bin/splunk remove index 3cx**
   * If it's clustered environment then remove **[3cx]** stanza from indexes.conf from CM and apply the changes.
+
+### Alternative 
+3CX now provides more detailed report than in the older releases, so users can now rely on that instead of using this App of Splunk.
 
 
 ### Download from Splunkbase
